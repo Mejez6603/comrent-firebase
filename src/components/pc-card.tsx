@@ -64,7 +64,7 @@ export function PcCard({ pc, isOnline }: { pc: PC; isOnline: boolean }) {
   const config = statusConfig[pc.status];
   const Icon = config.icon;
 
-  const CardComponent = (
+  const cardContent = (
     <Card
       className={cn(
         'transition-all duration-300 ease-in-out transform hover:-translate-y-1 shadow-md hover:shadow-xl relative overflow-hidden',
@@ -97,10 +97,10 @@ export function PcCard({ pc, isOnline }: { pc: PC; isOnline: boolean }) {
   if (config.clickable && isOnline) {
     return (
       <Link href={`/payment?pc=${pc.name}`} className="block no-underline">
-        {CardComponent}
+        {cardContent}
       </Link>
     );
   }
 
-  return CardComponent;
+  return cardContent;
 }
