@@ -69,4 +69,26 @@ export async function GET() {
   return NextResponse.json(pcs);
 }
 
+export async function POST(request: Request) {
+    try {
+      const { id, newName } = await request.json();
+  
+      if (!id || !newName) {
+        return NextResponse.json({ message: 'Missing id or newName' }, { status: 400 });
+      }
+  
+      const pcIndex = pcs.findIndex(p => p.id === id);
+  
+      if (pcIndex === -1) {
+        return NextResponse.json({ message: 'PC not found' }, { status: 404 });
+      }
+  
+      pcs[pcIndex].name = newName;
+  
+      return NextResponse.json(pcs[pcIndex]);
+    } catch (error) {
+      return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
+    }
+}
+
 export const dynamic = 'force-dynamic';

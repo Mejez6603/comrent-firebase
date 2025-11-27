@@ -17,9 +17,16 @@ import {
     Hourglass,
     Ban,
     Wrench,
+    Pencil,
+    Save,
+    X,
   } from 'lucide-react';
 import type { FC } from 'react';
+import { useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
+import { Button } from '../ui/button';
+import { Input } from '../ui/input';
+import { useToast } from '@/hooks/use-toast';
 
 type StatusConfig = {
     [key in PCStatus]: {
@@ -57,7 +64,55 @@ const statusConfig: StatusConfig = {
     },
 };
 
-export function AdminPcTable({ pcs }: { pcs: PC[] }) {
+export function AdminPcTable({ pcs, setPcs }: { pcs: PC[], setPcs: React.Dispatch<React.SetStateAction<PC[]>> }) {
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState('');
+  const { toast } = useToast();
+
+  const handleEdit = (pc: PC) => {
+    setEditingId(pc.id);
+    setEditingName(pc.name);
+  };
+
+  const handleCancel = () => {
+    setEditingId(null);
+    setEditingName('');
+  };
+
+  const handleSave = async (id: string) => {
+    try {
+      const response = await fetch('/api/pc-status', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ id, newName: editingName }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update PC name');
+      }
+
+      const updatedPc: PC = await response.json();
+      
+      setPcs(prevPcs => prevPcs.map(p => (p.id === updatedPc.id ? updatedPc : p)));
+      
+      toast({
+        title: 'Success',
+        description: `PC name updated to "${updatedPc.name}"`,
+      });
+    } catch (error) {
+      console.error(error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Could not update PC name.',
+      });
+    } finally {
+      handleCancel();
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -71,12 +126,14 @@ export function AdminPcTable({ pcs }: { pcs: PC[] }) {
               <TableHead>Status</TableHead>
               <TableHead>User</TableHead>
               <TableHead>Time Remaining</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {pcs.map((pc) => {
               const config = statusConfig[pc.status];
               const Icon = config.icon;
+              const isEditing = editingId === pc.id;
               
               let timeRemaining = '-';
               if (pc.status === 'in_use' && pc.session_start && pc.session_duration) {
@@ -86,7 +143,17 @@ export function AdminPcTable({ pcs }: { pcs: PC[] }) {
 
               return (
                 <TableRow key={pc.id}>
-                  <TableCell className="font-medium">{pc.name}</TableCell>
+                  <TableCell className="font-medium">
+                    {isEditing ? (
+                      <Input 
+                        value={editingName} 
+                        onChange={(e) => setEditingName(e.target.value)}
+                        className="h-8"
+                      />
+                    ) : (
+                      pc.name
+                    )}
+                  </TableCell>
                   <TableCell>
                     <Badge variant="outline" className={cn('border-2', config.badgeClass)}>
                       <Icon className="mr-2 h-4 w-4" />
@@ -95,6 +162,22 @@ export function AdminPcTable({ pcs }: { pcs: PC[] }) {
                   </TableCell>
                   <TableCell>{pc.user || '-'}</TableCell>
                   <TableCell>{timeRemaining}</TableCell>
+                  <TableCell className="text-right">
+                    {isEditing ? (
+                      <div className="flex gap-2 justify-end">
+                        <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleSave(pc.id)}>
+                          <Save className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleCancel}>
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(pc)}>
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </TableCell>
                 </TableRow>
               );
             })}

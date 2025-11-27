@@ -31,7 +31,7 @@ export function AdminDashboard() {
     };
 
     fetchStatuses();
-    const intervalId = setInterval(fetchStatuses, 2000);
+    const intervalId = setInterval(fetchStatuses, 5000); // Polling less frequently as we update state locally
 
     return () => clearInterval(intervalId);
   }, [isOnline, isLoading]);
@@ -56,7 +56,7 @@ export function AdminDashboard() {
             </AlertDescription>
         </Alert>
       )}
-      <AdminPcTable pcs={pcs} />
+      <AdminPcTable pcs={pcs} setPcs={setPcs} />
     </>
   );
 }
