@@ -186,7 +186,7 @@ export function AdminPcTable({ pcs, setPcs }: { pcs: PC[], setPcs: React.Dispatc
   const handleStatusChange = async (pcId: string, newStatus: PCStatus) => {
     const pcToUpdate = pcs.find(p => p.id === pcId);
     if (!pcToUpdate) return;
-    
+
     try {
         const body: any = { id: pcId, newStatus };
 
@@ -221,7 +221,7 @@ export function AdminPcTable({ pcs, setPcs }: { pcs: PC[], setPcs: React.Dispatc
   };
 
   const generateInvoiceLink = (pc: PC) => {
-    if (!pc.email) return '#';
+    if (!pc.email || (!pc.session_duration && pc.status !== 'pending_approval')) return '#';
 
     const durationInfo = durationOptions.find(d => d.value === String(pc.session_duration));
     const subject = `Invoice for your session on ${pc.name}`;
@@ -238,7 +238,7 @@ Amount: ₱${durationInfo?.price.toFixed(2) || 'N/A'}
 We hope to see you again!
 
 Best,
-ComRent Team
+The ComRent Team
     `.trim().replace(/\n/g, '%0D%0A');
 
     return `mailto:${pc.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
@@ -315,7 +315,7 @@ ComRent Team
                     <TableCell>{pc.user || '-'}</TableCell>
                     <TableCell>
                       {pc.email ? (
-                        <a href={generateInvoiceLink(pc)} className="text-accent underline flex items-center gap-1 hover:text-accent/80">
+                        <a href={generateInvoiceLink(pc)} className="text-accent underline flex items-center gap-1 hover:text-accent/80" target="_blank" rel="noopener noreferrer">
                            <Mail className="h-3 w-3" /> {pc.email}
                         </a>
                       ) : (
