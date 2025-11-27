@@ -221,9 +221,11 @@ export function AdminPcTable({ pcs, setPcs }: { pcs: PC[], setPcs: React.Dispatc
   };
 
   const generateInvoiceLink = (pc: PC) => {
-    if (!pc.email || (!pc.session_duration && pc.status !== 'pending_approval')) return '#';
-
+    if (!pc.email || !pc.session_duration) return '#';
+  
     const durationInfo = durationOptions.find(d => d.value === String(pc.session_duration));
+    if (!durationInfo) return '#';
+  
     const subject = `Invoice for your session on ${pc.name}`;
     const body = `
 Hi ${pc.user || 'customer'},
@@ -232,15 +234,15 @@ Thank you for using ComRent!
 
 Here is your invoice:
 PC: ${pc.name}
-Duration: ${durationInfo?.label || 'N/A'}
-Amount: ₱${durationInfo?.price.toFixed(2) || 'N/A'}
+Duration: ${durationInfo.label}
+Amount: ₱${durationInfo.price.toFixed(2)}
 
 We hope to see you again!
 
 Best,
 The ComRent Team
     `.trim().replace(/\n/g, '%0D%0A');
-
+  
     return `mailto:${pc.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   };
 
@@ -315,7 +317,7 @@ The ComRent Team
                     <TableCell>{pc.user || '-'}</TableCell>
                     <TableCell>
                       {pc.email ? (
-                        <a href={generateInvoiceLink(pc)} className="text-accent underline flex items-center gap-1 hover:text-accent/80" target="_blank" rel="noopener noreferrer">
+                        <a href={generateInvoiceLink(pc)} className="text-accent underline flex items-center gap-1 hover:text-accent/80">
                            <Mail className="h-3 w-3" /> {pc.email}
                         </a>
                       ) : (
