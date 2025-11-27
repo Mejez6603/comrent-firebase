@@ -22,6 +22,7 @@ import {
     X,
     Trash2,
     CircleHelp,
+    Mail,
   } from 'lucide-react';
 import type { FC } from 'react';
 import { useState } from 'react';
@@ -88,6 +89,13 @@ const statusConfig: StatusConfig = {
 };
 
 const ALL_STATUSES = Object.keys(statusConfig) as PCStatus[];
+
+const durationOptions = [
+    { value: '30', label: '30 minutes', price: 30 },
+    { value: '60', label: '1 hour', price: 50 },
+    { value: '120', label: '2 hours', price: 90 },
+    { value: '180', label: '3 hours', price: 120 },
+  ];
 
 export function AdminPcTable({ pcs, setPcs }: { pcs: PC[], setPcs: React.Dispatch<React.SetStateAction<PC[]>> }) {
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -213,6 +221,30 @@ export function AdminPcTable({ pcs, setPcs }: { pcs: PC[], setPcs: React.Dispatc
       }
   };
 
+  const generateInvoiceLink = (pc: PC) => {
+    if (!pc.email) return '#';
+
+    const durationInfo = durationOptions.find(d => d.value === String(pc.session_duration));
+    const subject = `Invoice for your session on ${pc.name}`;
+    const body = `
+Hi ${pc.user || 'customer'},
+
+Thank you for using ComRent!
+
+Here is your invoice:
+PC: ${pc.name}
+Duration: ${durationInfo?.label || 'N/A'}
+Amount: ₱${durationInfo?.price.toFixed(2) || 'N/A'}
+
+We hope to see you again!
+
+Best,
+ComRent Team
+    `.trim().replace(/\n/g, '%0D%0A');
+
+    return `mailto:${pc.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  };
+
   return (
     <>
       <Card>
@@ -226,6 +258,7 @@ export function AdminPcTable({ pcs, setPcs }: { pcs: PC[], setPcs: React.Dispatc
                 <TableHead>PC Name</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>User</TableHead>
+                <TableHead>Email</TableHead>
                 <TableHead>Time Remaining</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -278,6 +311,15 @@ export function AdminPcTable({ pcs, setPcs }: { pcs: PC[], setPcs: React.Dispatc
                       </DropdownMenu>
                     </TableCell>
                     <TableCell>{pc.user || '-'}</TableCell>
+                    <TableCell>
+                      {pc.email ? (
+                        <a href={generateInvoiceLink(pc)} className="text-accent underline flex items-center gap-1 hover:text-accent/80">
+                           <Mail className="h-3 w-3" /> {pc.email}
+                        </a>
+                      ) : (
+                        '-'
+                      )}
+                    </TableCell>
                     <TableCell>{timeRemaining}</TableCell>
                     <TableCell className="text-right">
                       {isEditing ? (
