@@ -65,6 +65,13 @@ export default {
           border: 'hsl(var(--sidebar-border))',
           ring: 'hsl(var(--sidebar-ring))',
         },
+        status: {
+          online: 'hsl(var(--status-online))',
+          using: 'hsl(var(--status-using))',
+          pending: 'hsl(var(--status-pending))',
+          unavailable: 'hsl(var(--status-unavailable))',
+          text: 'hsl(var(--status-text))',
+        },
       },
       borderRadius: {
         lg: 'var(--radius)',
