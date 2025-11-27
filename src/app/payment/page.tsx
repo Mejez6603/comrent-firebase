@@ -114,21 +114,31 @@ function PaymentForm() {
   }, [step, pc]);
 
   useEffect(() => {
-      if (step !== 'in_session' || !sessionEndTime) return;
+    if (step !== 'in_session' || !sessionEndTime) return;
 
-      const timerId = setInterval(() => {
-          const remaining = formatDistanceToNowStrict(sessionEndTime);
-          setTimeRemaining(remaining);
+    const timerId = setInterval(() => {
+      const now = new Date();
+      const endTime = new Date(sessionEndTime);
 
-          if (new Date() >= sessionEndTime) {
-            setTimeRemaining('Session Expired');
-            clearInterval(timerId);
-          }
-      }, 1000);
+      if (now >= endTime) {
+        setTimeRemaining('00:00:00');
+        clearInterval(timerId);
+        return;
+      }
 
-      return () => clearInterval(timerId);
+      const totalSeconds = Math.floor((endTime.getTime() - now.getTime()) / 1000);
+      
+      const hours = Math.floor(totalSeconds / 3600);
+      const minutes = Math.floor((totalSeconds % 3600) / 60);
+      const seconds = totalSeconds % 60;
 
-  }, [step, sessionEndTime])
+      const formattedTime = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+      
+      setTimeRemaining(formattedTime);
+    }, 1000);
+
+    return () => clearInterval(timerId);
+  }, [step, sessionEndTime]);
 
   const handlePaymentMethodSelect = (method: PaymentMethod) => {
     setSelectedPaymentMethod(method);
