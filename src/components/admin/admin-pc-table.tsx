@@ -20,6 +20,7 @@ import {
     Pencil,
     Save,
     X,
+    Trash2,
   } from 'lucide-react';
 import type { FC } from 'react';
 import { useState } from 'react';
@@ -27,6 +28,16 @@ import { formatDistanceToNow } from 'date-fns';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { useToast } from '@/hooks/use-toast';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+  } from "@/components/ui/alert-dialog";
 
 type StatusConfig = {
     [key in PCStatus]: {
@@ -67,6 +78,7 @@ const statusConfig: StatusConfig = {
 export function AdminPcTable({ pcs, setPcs }: { pcs: PC[], setPcs: React.Dispatch<React.SetStateAction<PC[]>> }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState<PC | null>(null);
   const { toast } = useToast();
 
   const handleEdit = (pc: PC) => {
@@ -74,7 +86,7 @@ export function AdminPcTable({ pcs, setPcs }: { pcs: PC[], setPcs: React.Dispatc
     setEditingName(pc.name);
   };
 
-  const handleCancel = () => {
+  const handleCancelEdit = () => {
     setEditingId(null);
     setEditingName('');
   };
@@ -109,81 +121,142 @@ export function AdminPcTable({ pcs, setPcs }: { pcs: PC[], setPcs: React.Dispatc
         description: 'Could not update PC name.',
       });
     } finally {
-      handleCancel();
+      handleCancelEdit();
     }
   };
 
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>PC Status Overview</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>PC Name</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>User</TableHead>
-              <TableHead>Time Remaining</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {pcs.map((pc) => {
-              const config = statusConfig[pc.status];
-              const Icon = config.icon;
-              const isEditing = editingId === pc.id;
-              
-              let timeRemaining = '-';
-              if (pc.status === 'in_use' && pc.session_start && pc.session_duration) {
-                const endTime = new Date(pc.session_start).getTime() + pc.session_duration * 60 * 1000;
-                timeRemaining = formatDistanceToNow(endTime, { addSuffix: true });
-              }
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
 
-              return (
-                <TableRow key={pc.id}>
-                  <TableCell className="font-medium">
-                    {isEditing ? (
-                      <Input 
-                        value={editingName} 
-                        onChange={(e) => setEditingName(e.target.value)}
-                        className="h-8"
-                      />
-                    ) : (
-                      pc.name
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className={cn('border-2', config.badgeClass)}>
-                      <Icon className="mr-2 h-4 w-4" />
-                      {config.label}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{pc.user || '-'}</TableCell>
-                  <TableCell>{timeRemaining}</TableCell>
-                  <TableCell className="text-right">
-                    {isEditing ? (
-                      <div className="flex gap-2 justify-end">
-                        <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleSave(pc.id)}>
-                          <Save className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleCancel}>
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ) : (
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(pc)}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
+    try {
+      const response = await fetch('/api/pc-status', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ id: deleteTarget.id }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete PC');
+      }
+
+      const { deletedPcId } = await response.json();
+      
+      setPcs(prevPcs => prevPcs.filter(p => p.id !== deletedPcId));
+      
+      toast({
+        title: 'Success',
+        description: `PC "${deleteTarget.name}" has been deleted.`,
+      });
+    } catch (error) {
+        console.error(error);
+        toast({
+            variant: 'destructive',
+            title: 'Error',
+            description: 'Could not delete PC.',
+        });
+    } finally {
+        setDeleteTarget(null);
+    }
+  };
+
+
+  return (
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle>PC Status Overview</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>PC Name</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>User</TableHead>
+                <TableHead>Time Remaining</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {pcs.map((pc) => {
+                const config = statusConfig[pc.status];
+                const Icon = config.icon;
+                const isEditing = editingId === pc.id;
+                
+                let timeRemaining = '-';
+                if (pc.status === 'in_use' && pc.session_start && pc.session_duration) {
+                  const endTime = new Date(pc.session_start).getTime() + pc.session_duration * 60 * 1000;
+                  timeRemaining = formatDistanceToNow(endTime, { addSuffix: true });
+                }
+
+                return (
+                  <TableRow key={pc.id}>
+                    <TableCell className="font-medium">
+                      {isEditing ? (
+                        <Input 
+                          value={editingName} 
+                          onChange={(e) => setEditingName(e.target.value)}
+                          className="h-8"
+                        />
+                      ) : (
+                        pc.name
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className={cn('border-2', config.badgeClass)}>
+                        <Icon className="mr-2 h-4 w-4" />
+                        {config.label}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{pc.user || '-'}</TableCell>
+                    <TableCell>{timeRemaining}</TableCell>
+                    <TableCell className="text-right">
+                      {isEditing ? (
+                        <div className="flex gap-2 justify-end">
+                          <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleSave(pc.id)}>
+                            <Save className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleCancelEdit}>
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="flex gap-2 justify-end">
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(pc)}>
+                                <Pencil className="h-4 w-4" />
+                            </Button>
+                             <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleteTarget(pc)}>
+                                <Trash2 className="h-4 w-4" />
+                            </Button>
+                        </div>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+      <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the PC named
+              <span className="font-bold"> "{deleteTarget?.name}"</span>.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

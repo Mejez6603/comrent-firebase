@@ -91,4 +91,26 @@ export async function POST(request: Request) {
     }
 }
 
+export async function DELETE(request: Request) {
+    try {
+      const { id } = await request.json();
+  
+      if (!id) {
+        return NextResponse.json({ message: 'Missing id' }, { status: 400 });
+      }
+  
+      const pcIndex = pcs.findIndex(p => p.id === id);
+  
+      if (pcIndex === -1) {
+        return NextResponse.json({ message: 'PC not found' }, { status: 404 });
+      }
+  
+      const deletedPc = pcs.splice(pcIndex, 1);
+  
+      return NextResponse.json({ message: 'PC deleted successfully', deletedPcId: deletedPc[0].id });
+    } catch (error) {
+      return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
+    }
+}
+
 export const dynamic = 'force-dynamic';
