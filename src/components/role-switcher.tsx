@@ -1,18 +1,16 @@
 'use client';
 
-import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Users } from 'lucide-react';
 
-export function RoleSwitcher() {
-  const [role, setRole] = useState<'user' | 'admin'>('user');
+type RoleSwitcherProps = {
+    role: 'user' | 'admin';
+    onToggle: () => void;
+}
 
-  const toggleRole = () => {
-    setRole(current => (current === 'user' ? 'admin' : 'user'));
-  };
-
+export function RoleSwitcher({ role, onToggle }: RoleSwitcherProps) {
   return (
-    <Button onClick={toggleRole} variant="outline">
+    <Button onClick={onToggle} variant="outline">
       <Users className="mr-2 h-4 w-4" />
       Switch to {role === 'user' ? 'Admin' : 'User'}
     </Button>
