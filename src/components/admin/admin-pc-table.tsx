@@ -190,7 +190,6 @@ export function AdminPcTable({ pcs, setPcs }: { pcs: PC[], setPcs: React.Dispatc
     try {
         const body: any = { id: pcId, newStatus };
 
-        // When approving, we don't need to send user/duration as they are already on the server
         const response = await fetch('/api/pc-status', {
           method: 'PUT',
           headers: {
@@ -300,8 +299,11 @@ ComRent Team
                             {ALL_STATUSES.map(status => {
                                 const statusConf = statusConfig[status];
                                 const StatusIcon = statusConf.icon;
+                                const isPendingApproval = pc.status === 'pending_approval';
+                                const isDisabled = pc.status === status || (isPendingApproval && status !== 'in_use');
+
                                 return (
-                                    <DropdownMenuItem key={status} onClick={() => handleStatusChange(pc.id, status)} disabled={pc.status === status}>
+                                    <DropdownMenuItem key={status} onClick={() => handleStatusChange(pc.id, status)} disabled={isDisabled}>
                                         <StatusIcon className="mr-2 h-4 w-4" />
                                         <span>{statusConf.label}</span>
                                     </DropdownMenuItem>
