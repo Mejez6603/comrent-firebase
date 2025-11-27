@@ -11,7 +11,6 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Monitor, Power, Hourglass, Ban, Wifi, WifiOff, Wrench, CircleHelp } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 
 type StatusConfig = {
   [key in PCStatus]: {
@@ -62,17 +61,8 @@ const statusConfig: StatusConfig = {
 };
 
 export function PcCard({ pc, isOnline }: { pc: PC; isOnline: boolean }) {
-  const router = useRouter();
   const config = statusConfig[pc.status];
   const Icon = config.icon;
-  const Wrapper = config.clickable && isOnline ? 'a' : 'div';
-
-  const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (config.clickable && isOnline) {
-      e.preventDefault();
-      router.push(`/payment?pc=${pc.name}`);
-    }
-  };
 
   const cardContent = (
     <Card
@@ -104,7 +94,7 @@ export function PcCard({ pc, isOnline }: { pc: PC; isOnline: boolean }) {
     </Card>
   );
 
-  if (Wrapper === 'a') {
+  if (config.clickable && isOnline) {
     return (
       <Link href={`/payment?pc=${pc.name}`} passHref legacyBehavior>
         <a className="block no-underline">{cardContent}</a>
