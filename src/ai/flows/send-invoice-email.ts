@@ -82,11 +82,11 @@ const sendInvoiceEmailFlow = ai.defineFlow(
       
       // IMPORTANT: Resend's free tier requires you to send emails FROM a verified domain
       // you own, and TO your own email address. For this to work, you will need to
-      // sign up at resend.com, verify your domain, and you might need to change
-      // the `to` and `from` fields below.
+      // sign up at resend.com, verify your domain, and you will need to change
+      // the `from` and `to` fields below.
       const { data, error } = await resend.emails.send({
-        from: 'ComRent <onboarding@resend.dev>', // Replace with your verified sender domain
-        to: [input.customerEmail],
+        from: 'ComRent <onboarding@resend.dev>', // TODO: Replace with your verified sender domain
+        to: [input.customerEmail], // On free tier, can only be your own email.
         subject: output.emailSubject,
         text: output.emailBody,
       });
