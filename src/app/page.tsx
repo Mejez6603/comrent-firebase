@@ -1,10 +1,14 @@
 import { PcStatusGrid } from '@/components/pc-status-grid';
+import { RoleSwitcher } from '@/components/role-switcher';
 
 export default function Home() {
   return (
     <div className="flex flex-col min-h-screen">
       <main className="flex-1">
         <div className="container mx-auto px-4 py-8 md:py-12">
+          <div className="absolute top-4 left-4">
+            <RoleSwitcher />
+          </div>
           <header className="text-center mb-8 md:mb-12">
             <h1 className="text-4xl md:text-5xl font-bold text-primary font-headline tracking-tight">ComRent</h1>
             <p className="text-lg text-muted-foreground mt-2 max-w-2xl mx-auto">
