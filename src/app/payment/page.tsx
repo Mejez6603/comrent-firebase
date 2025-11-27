@@ -27,9 +27,10 @@ import { useRouter } from 'next/navigation';
 import { PC } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { add, formatDistanceToNowStrict } from 'date-fns';
+import { Separator } from '@/components/ui/separator';
 
 type PaymentMethod = 'GCash' | 'Maya' | 'QR Code';
-type PaymentStep = 'selection' | 'qr_display' | 'pending_approval' | 'in_session';
+type PaymentStep = 'selection' | 'pending_approval' | 'in_session';
 
 const durationOptions = [
   { value: '30', label: '30 minutes', price: 30 },
@@ -69,7 +70,6 @@ function PaymentForm() {
   useEffect(() => {
     if (!pcName) return;
     
-    // Fetch initial PC data to get its ID
     const fetchAllPcs = async () => {
         try {
             const res = await fetch('/api/pc-status');
@@ -132,11 +132,10 @@ function PaymentForm() {
 
   const handlePaymentMethodSelect = (method: PaymentMethod) => {
     setSelectedPaymentMethod(method);
-    setStep('qr_display');
   };
 
   const handleSendPayment = async () => {
-    if (!pc || !selectedDuration) return;
+    if (!pc || !selectedDuration || !selectedPaymentMethod) return;
 
     setIsProcessing(true);
     try {
@@ -228,77 +227,82 @@ function PaymentForm() {
                     <p className='text-sm pt-4'>You are renting <span className='font-bold text-accent'>{pcName}</span> for <span className='font-bold text-accent'>{selectedDuration?.label}</span>.</p>
                 </div>
             )
-        case 'qr_display':
-            return (
-                <div className="space-y-6 animate-in fade-in-50">
-                    <div className='text-center'>
-                        <p className='text-muted-foreground'>Scan to pay via <span className='font-bold'>{selectedPaymentMethod}</span></p>
-                        <p className="text-4xl font-bold pt-2">₱{selectedDuration?.price.toFixed(2)}</p>
-                    </div>
-                    <div className={cn("w-64 h-64 mx-auto rounded-lg shadow-inner flex items-center justify-center", selectedPaymentMethod ? paymentMethodColors[selectedPaymentMethod] : 'bg-muted')}>
-                        <p className='text-white/80 font-mono text-sm'>[QR CODE]</p>
-                    </div>
-                    <Button size="lg" className="w-full font-bold" onClick={handleSendPayment} disabled={isProcessing}>
-                        {isProcessing ? <Loader className='animate-spin mr-2'/> : <Send className="mr-2" />}
-                        {isProcessing ? 'Sending...' : 'I Have Sent The Payment'}
-                    </Button>
-                </div>
-            )
         case 'selection':
         default:
             return (
-                <div className='space-y-6 animate-in fade-in-50'>
-                    <div className="space-y-2">
-                        <Label htmlFor="duration" className="flex items-center">
-                        <Clock className="mr-2 h-4 w-4" />
-                        Select Duration
-                        </Label>
-                        <Select value={duration} onValueChange={setDuration}>
-                        <SelectTrigger id="duration" className="w-full">
-                            <SelectValue placeholder="Select rental time" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {durationOptions.map(opt => (
-                            <SelectItem key={opt.value} value={opt.value}>
-                                {opt.label}
-                            </SelectItem>
-                            ))}
-                        </SelectContent>
-                        </Select>
-                    </div>
-                    
-                    <div className="space-y-4">
-                        <Label className="text-sm text-muted-foreground">Email Invoice (Optional)</Label>
-                        <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
-                            <div className="relative">
-                                <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                <Input id="name" placeholder="Your Name" className="pl-9" value={name} onChange={(e) => setName(e.target.value)} />
-                            </div>
-                            <div className="relative">
-                                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                <Input id="email" type="email" placeholder="Your Email" className="pl-9" value={email} onChange={(e) => setEmail(e.target.value)} />
+                <div className='grid grid-cols-1 md:grid-cols-2 gap-8'>
+                    <div className='space-y-6 animate-in fade-in-50'>
+                        <div className="space-y-2">
+                            <Label htmlFor="duration" className="flex items-center">
+                            <Clock className="mr-2 h-4 w-4" />
+                            Select Duration
+                            </Label>
+                            <Select value={duration} onValueChange={setDuration} disabled={!!selectedPaymentMethod}>
+                            <SelectTrigger id="duration" className="w-full">
+                                <SelectValue placeholder="Select rental time" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {durationOptions.map(opt => (
+                                <SelectItem key={opt.value} value={opt.value}>
+                                    {opt.label}
+                                </SelectItem>
+                                ))}
+                            </SelectContent>
+                            </Select>
+                        </div>
+                        
+                        <div className="space-y-4">
+                            <Label className="text-sm text-muted-foreground">Email Invoice (Optional)</Label>
+                            <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
+                                <div className="relative">
+                                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                    <Input id="name" placeholder="Your Name" className="pl-9" value={name} onChange={(e) => setName(e.target.value)} disabled={!!selectedPaymentMethod} />
+                                </div>
+                                <div className="relative">
+                                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                    <Input id="email" type="email" placeholder="Your Email" className="pl-9" value={email} onChange={(e) => setEmail(e.target.value)} disabled={!!selectedPaymentMethod}/>
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    <div className="text-center">
-                        <p className="text-sm text-muted-foreground">Total Cost</p>
-                        <p className="text-5xl font-bold">₱{selectedDuration?.price.toFixed(2)}</p>
-                    </div>
-
-                    <div className="space-y-3">
-                        <Label className="text-sm text-center block">Select Payment Method</Label>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                            <Button size="lg" className="font-bold bg-blue-500 hover:bg-blue-600" onClick={() => handlePaymentMethodSelect('GCash')}>
-                                GCash
-                            </Button>
-                            <Button size="lg" className="font-bold bg-green-800 hover:bg-green-900" onClick={() => handlePaymentMethodSelect('Maya')}>
-                                Maya
-                            </Button>
-                             <Button size="lg" className="font-bold bg-red-600 hover:bg-red-700" onClick={() => handlePaymentMethodSelect('QR Code')}>
-                                QR Code
-                            </Button>
+                        <div className="text-center">
+                            <p className="text-sm text-muted-foreground">Total Cost</p>
+                            <p className="text-5xl font-bold">₱{selectedDuration?.price.toFixed(2)}</p>
                         </div>
+                    </div>
+                    <div className="flex flex-col justify-between space-y-6">
+                        {selectedPaymentMethod ? (
+                             <div className="space-y-6 animate-in fade-in-50">
+                                <div className='text-center'>
+                                    <p className='text-muted-foreground'>Scan to pay via <span className='font-bold'>{selectedPaymentMethod}</span></p>
+                                    <p className="text-4xl font-bold pt-2">₱{selectedDuration?.price.toFixed(2)}</p>
+                                </div>
+                                <div className={cn("w-64 h-64 mx-auto rounded-lg shadow-inner flex items-center justify-center", paymentMethodColors[selectedPaymentMethod])}>
+                                    <p className='text-white/80 font-mono text-sm'>[QR CODE]</p>
+                                </div>
+                                <Button size="lg" className="w-full font-bold" onClick={handleSendPayment} disabled={isProcessing}>
+                                    {isProcessing ? <Loader className='animate-spin mr-2'/> : <Send className="mr-2" />}
+                                    {isProcessing ? 'Sending...' : 'I Have Sent The Payment'}
+                                </Button>
+                                <Button variant="outline" className="w-full" onClick={() => setSelectedPaymentMethod(null)}>Change Payment Method</Button>
+                            </div>
+                        ) : (
+                            <div className="space-y-3 animate-in fade-in-50">
+                                <Label className="text-sm text-center block">Select Payment Method</Label>
+                                <div className="grid grid-cols-1 gap-3">
+                                    <Button size="lg" className="font-bold bg-blue-500 hover:bg-blue-600" onClick={() => handlePaymentMethodSelect('GCash')}>
+                                        GCash
+                                    </Button>
+                                    <Button size="lg" className="font-bold bg-green-800 hover:bg-green-900" onClick={() => handlePaymentMethodSelect('Maya')}>
+                                        Maya
+                                    </Button>
+                                    <Button size="lg" className="font-bold bg-red-600 hover:bg-red-700" onClick={() => handlePaymentMethodSelect('QR Code')}>
+                                        QR Code
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
+                       
                     </div>
                 </div>
             )
@@ -307,7 +311,7 @@ function PaymentForm() {
 
 
   return (
-    <Card className="w-full max-w-lg shadow-2xl min-h-[620px]">
+    <Card className="w-full max-w-4xl shadow-2xl min-h-[620px]">
       <CardHeader className="text-center">
         <CardTitle className="text-3xl font-bold text-primary">
             {step === 'in_session' ? 'Session Active' : 'Start Your Session'}
@@ -319,7 +323,8 @@ function PaymentForm() {
       <CardContent className="space-y-6 px-8">
         {renderContent()}
       </CardContent>
-      <CardFooter className="flex flex-col gap-4 px-8 pb-8">
+      <CardFooter className="flex flex-col gap-4 px-8 pb-8 mt-4">
+       {(step === 'selection' && !selectedPaymentMethod) && <Separator className="my-4" />}
         <Button asChild variant="ghost" className="w-full" disabled={isProcessing || step === 'pending_approval' || step === 'in_session'}>
           <Link href="/">
             <ArrowLeft className="mr-2 h-4 w-4" />
