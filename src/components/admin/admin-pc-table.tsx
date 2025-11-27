@@ -23,6 +23,8 @@ import {
     Trash2,
     CircleHelp,
     Mail,
+    Send,
+    Loader,
   } from 'lucide-react';
 import type { FC } from 'react';
 import { useState } from 'react';
@@ -46,6 +48,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
   } from "@/components/ui/dropdown-menu";
+import { sendInvoiceEmail } from '@/ai/flows/send-invoice-email';
 
 type StatusConfig = {
     [key in PCStatus]: {
@@ -101,6 +104,7 @@ export function AdminPcTable({ pcs, setPcs }: { pcs: PC[], setPcs: React.Dispatc
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<PC | null>(null);
+  const [sendingEmailId, setSendingEmailId] = useState<string | null>(null);
   const { toast } = useToast();
 
   const handleEdit = (pc: PC) => {
@@ -220,30 +224,42 @@ export function AdminPcTable({ pcs, setPcs }: { pcs: PC[], setPcs: React.Dispatc
       }
   };
 
-  const generateInvoiceLink = (pc: PC) => {
-    if (!pc.email || !pc.session_duration) return '#';
-  
-    const durationInfo = durationOptions.find(d => d.value === String(pc.session_duration));
-    if (!durationInfo) return '#';
-  
-    const subject = `Invoice for your session on ${pc.name}`;
-    const body = `
-Hi ${pc.user || 'customer'},
+  const handleSendInvoice = async (pc: PC) => {
+    if (!pc.email || !pc.session_duration || !pc.user) return;
 
-Thank you for using ComRent!
+    const durationInfo = durationOptions.find(d => String(d.value) === String(pc.session_duration));
+    if (!durationInfo) return;
 
-Here is your invoice:
-PC: ${pc.name}
-Duration: ${durationInfo.label}
-Amount: ₱${durationInfo.price.toFixed(2)}
+    setSendingEmailId(pc.id);
 
-We hope to see you again!
+    try {
+      const result = await sendInvoiceEmail({
+        customerName: pc.user,
+        customerEmail: pc.email,
+        pcName: pc.name,
+        duration: durationInfo.label,
+        amount: `₱${durationInfo.price.toFixed(2)}`,
+        companyName: 'ComRent',
+      });
 
-Best,
-The ComRent Team
-    `.trim().replace(/\n/g, '%0D%0A');
-  
-    return `mailto:${pc.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      if (result.success) {
+        toast({
+            title: 'Invoice Sent!',
+            description: `Email has been sent to ${pc.email}.`,
+        });
+      } else {
+        throw new Error('Flow returned success: false');
+      }
+    } catch (error) {
+      console.error('Failed to send invoice email:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Could not send invoice email.',
+      });
+    } finally {
+      setSendingEmailId(null);
+    }
   };
 
   return (
@@ -269,6 +285,7 @@ The ComRent Team
                 const config = statusConfig[pc.status];
                 const Icon = config.icon;
                 const isEditing = editingId === pc.id;
+                const isSendingEmail = sendingEmailId === pc.id;
                 
                 let timeRemaining = '-';
                 if (pc.status === 'in_use' && pc.session_start && pc.session_duration) {
@@ -317,9 +334,23 @@ The ComRent Team
                     <TableCell>{pc.user || '-'}</TableCell>
                     <TableCell>
                       {pc.email ? (
-                        <a href={generateInvoiceLink(pc)} className="text-accent underline flex items-center gap-1 hover:text-accent/80">
-                           <Mail className="h-3 w-3" /> {pc.email}
-                        </a>
+                        <Button 
+                            variant="link" 
+                            className="p-0 h-auto text-accent"
+                            onClick={() => handleSendInvoice(pc)}
+                            disabled={isSendingEmail}
+                        >
+                          {isSendingEmail ? (
+                            <>
+                              <Loader className="mr-2 h-3 w-3 animate-spin" />
+                              Sending...
+                            </>
+                          ) : (
+                            <>
+                              <Send className="mr-2 h-3 w-3" /> {pc.email}
+                            </>
+                          )}
+                        </Button>
                       ) : (
                         '-'
                       )}
