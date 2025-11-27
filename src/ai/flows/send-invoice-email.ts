@@ -82,10 +82,9 @@ const sendInvoiceEmailFlow = ai.defineFlow(
       
       // IMPORTANT: To send emails, you must have a domain verified with Resend.
       // Replace 'onboarding@resend.dev' with an email from your verified domain.
-      // Once your domain is verified, you can send emails to any address.
       const { data, error } = await resend.emails.send({
-        from: 'ComRent <onboarding@resend.dev>', // TODO: Replace with your verified domain email, e.g., 'YourName <hello@yourdomain.com>'
-        to: [input.customerEmail],
+        from: 'ComRent <CHANGE_ME@YOUR_VERIFIED_DOMAIN.COM>', // This will be your verified email
+        to: [input.customerEmail], // Now sending to the actual customer
         subject: output.emailSubject,
         text: output.emailBody,
       });
