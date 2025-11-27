@@ -26,7 +26,7 @@ export function AdminDashboard() {
         console.error('Failed to fetch PC statuses:', error);
         if (isOnline) setIsOnline(false);
       } finally {
-        setIsLoading(false);
+        if(isLoading) setIsLoading(false);
       }
     };
 
@@ -34,13 +34,13 @@ export function AdminDashboard() {
     const intervalId = setInterval(fetchStatuses, 2000);
 
     return () => clearInterval(intervalId);
-  }, [isOnline]);
+  }, [isOnline, isLoading]);
 
   if (isLoading) {
     return (
         <div className="space-y-4">
             <Skeleton className="h-[40px] w-full rounded-lg" />
-            <Skeleton className="h-[250px] w-full rounded-lg" />
+            <Skeleton className="h-[450px] w-full rounded-lg" />
         </div>
     );
   }

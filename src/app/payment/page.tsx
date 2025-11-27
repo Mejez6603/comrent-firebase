@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense } from 'react';
+import { Suspense, useState, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -21,10 +21,44 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { ArrowLeft, CreditCard, Clock } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { useRouter } from 'next/navigation';
+
+const durationOptions = [
+  { value: '30', label: '30 minutes', price: 5 },
+  { value: '60', label: '1 hour', price: 10 },
+  { value: '120', label: '2 hours', price: 18 },
+  { value: '180', label: '3 hours', price: 25 },
+];
+
 
 function PaymentForm() {
   const searchParams = useSearchParams();
   const pcName = searchParams.get('pc');
+  const router = useRouter();
+  const { toast } = useToast();
+  const [duration, setDuration] = useState(durationOptions[1].value);
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const selectedDuration = useMemo(() => 
+    durationOptions.find(opt => opt.value === duration),
+    [duration]
+  );
+
+  const handlePayment = async () => {
+    setIsProcessing(true);
+    // Simulate a payment process
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    
+    setIsProcessing(false);
+
+    toast({
+        title: "Payment Successful!",
+        description: `Your session on ${pcName} has started.`,
+    });
+
+    router.push('/');
+  }
 
   if (!pcName) {
     return (
@@ -62,29 +96,32 @@ function PaymentForm() {
             <Clock className="mr-2 h-4 w-4" />
             Select Duration
           </Label>
-          <Select defaultValue="60">
+          <Select value={duration} onValueChange={setDuration}>
             <SelectTrigger id="duration" className="w-full">
               <SelectValue placeholder="Select rental time" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="30">30 minutes</SelectItem>
-              <SelectItem value="60">1 hour</SelectItem>
-              <SelectItem value="120">2 hours</SelectItem>
-              <SelectItem value="180">3 hours</SelectItem>
+              {durationOptions.map(opt => (
+                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
         <div className="text-center">
           <p className="text-sm text-muted-foreground">Total Cost</p>
-          <p className="text-4xl font-bold">$10.00</p>
+          <p className="text-4xl font-bold">${selectedDuration?.price.toFixed(2)}</p>
         </div>
       </CardContent>
       <CardFooter className="flex flex-col gap-4">
-        <Button size="lg" className="w-full font-bold">
-          <CreditCard className="mr-2 h-5 w-5" />
-          Proceed to Payment
+        <Button size="lg" className="w-full font-bold" onClick={handlePayment} disabled={isProcessing}>
+          {isProcessing ? 'Processing...' : (
+            <>
+              <CreditCard className="mr-2 h-5 w-5" />
+              Proceed to Payment
+            </>
+          )}
         </Button>
-        <Button asChild variant="ghost" className="w-full">
+        <Button asChild variant="ghost" className="w-full" disabled={isProcessing}>
           <Link href="/">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Cancel and Go Back
@@ -98,7 +135,7 @@ function PaymentForm() {
 export default function PaymentPage() {
   return (
     <main className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-background to-secondary p-4">
-      <Suspense fallback={<Card className="w-full max-w-md h-[450px]"><CardContent><div className="animate-pulse rounded-md bg-muted h-full w-full"></div></CardContent></Card>}>
+      <Suspense fallback={<Card className="w-full max-w-md h-[480px]"><CardContent><div className="animate-pulse rounded-md bg-muted h-full w-full"></div></CardContent></Card>}>
         <PaymentForm />
       </Suspense>
     </main>

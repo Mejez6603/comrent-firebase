@@ -7,11 +7,10 @@ import { cn } from '@/lib/utils';
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Monitor, Power, Hourglass, Ban, Wifi, WifiOff } from 'lucide-react';
+import { Monitor, Power, Hourglass, Ban, Wifi, WifiOff, Wrench } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 type StatusConfig = {
@@ -24,31 +23,31 @@ type StatusConfig = {
 };
 
 const statusConfig: StatusConfig = {
-  offline: {
+  available: {
     label: 'Available',
     icon: Power,
     cardClass: 'bg-status-online text-status-text border-green-400',
     clickable: true,
   },
-  active: {
+  in_use: {
     label: 'In Use',
     icon: Monitor,
     cardClass: 'bg-status-using text-status-text border-blue-400',
     clickable: false,
   },
-  warning: {
-    label: 'In Use',
-    icon: Monitor,
-    cardClass: 'bg-status-using text-status-text border-blue-400',
-    clickable: false,
-  },
-  pending_extension: {
+  pending_payment: {
     label: 'Pending',
     icon: Hourglass,
     cardClass: 'bg-status-pending text-status-text border-orange-400',
     clickable: false,
   },
-  expired: {
+  maintenance: {
+    label: 'Maintenance',
+    icon: Wrench,
+    cardClass: 'bg-gray-500 text-status-text border-gray-400',
+    clickable: false,
+  },
+  unavailable: {
     label: 'Not Available',
     icon: Ban,
     cardClass: 'bg-status-unavailable text-status-text border-red-400',

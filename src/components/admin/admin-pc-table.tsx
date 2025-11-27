@@ -16,9 +16,10 @@ import {
     Power,
     Hourglass,
     Ban,
-    AlertCircle,
+    Wrench,
   } from 'lucide-react';
 import type { FC } from 'react';
+import { formatDistanceToNow } from 'date-fns';
 
 type StatusConfig = {
     [key in PCStatus]: {
@@ -29,28 +30,28 @@ type StatusConfig = {
   };
   
 const statusConfig: StatusConfig = {
-    offline: {
+    available: {
         label: 'Available',
         icon: Power,
         badgeClass: 'bg-status-online text-status-text border-green-400',
     },
-    active: {
+    in_use: {
         label: 'In Use',
         icon: Monitor,
         badgeClass: 'bg-status-using text-status-text border-blue-400',
     },
-    warning: {
-        label: 'Warning',
-        icon: AlertCircle,
-        badgeClass: 'bg-yellow-500 text-status-text border-yellow-400',
-    },
-    pending_extension: {
+    pending_payment: {
         label: 'Pending',
         icon: Hourglass,
         badgeClass: 'bg-status-pending text-status-text border-orange-400',
     },
-    expired: {
-        label: 'Expired',
+    maintenance: {
+      label: 'Maintenance',
+      icon: Wrench,
+      badgeClass: 'bg-gray-500 text-status-text border-gray-400',
+    },
+    unavailable: {
+        label: 'Unavailable',
         icon: Ban,
         badgeClass: 'bg-status-unavailable text-status-text border-red-400',
     },
@@ -68,13 +69,21 @@ export function AdminPcTable({ pcs }: { pcs: PC[] }) {
             <TableRow>
               <TableHead>PC Name</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>ID</TableHead>
+              <TableHead>User</TableHead>
+              <TableHead>Time Remaining</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {pcs.map((pc) => {
               const config = statusConfig[pc.status];
               const Icon = config.icon;
+              
+              let timeRemaining = '-';
+              if (pc.status === 'in_use' && pc.session_start && pc.session_duration) {
+                const endTime = new Date(pc.session_start).getTime() + pc.session_duration * 60 * 1000;
+                timeRemaining = formatDistanceToNow(endTime, { addSuffix: true });
+              }
+
               return (
                 <TableRow key={pc.id}>
                   <TableCell className="font-medium">{pc.name}</TableCell>
@@ -84,7 +93,8 @@ export function AdminPcTable({ pcs }: { pcs: PC[] }) {
                       {config.label}
                     </Badge>
                   </TableCell>
-                  <TableCell className="font-mono text-xs">{pc.id}</TableCell>
+                  <TableCell>{pc.user || '-'}</TableCell>
+                  <TableCell>{timeRemaining}</TableCell>
                 </TableRow>
               );
             })}

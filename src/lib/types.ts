@@ -1,12 +1,15 @@
 export type PCStatus =
-  | 'offline'
-  | 'active'
-  | 'warning'
-  | 'pending_extension'
-  | 'expired';
+  | 'available'
+  | 'in_use'
+  | 'pending_payment'
+  | 'maintenance'
+  | 'unavailable';
 
 export interface PC {
   id: string;
   name: string;
   status: PCStatus;
+  user?: string;
+  session_start?: string;
+  session_duration?: number;
 }
