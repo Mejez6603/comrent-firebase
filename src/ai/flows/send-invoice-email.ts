@@ -1,14 +1,15 @@
 'use server';
 /**
- * @fileOverview An AI flow to generate and "send" an invoice email.
+ * @fileOverview An AI flow to generate and send an invoice email.
  *
- * - sendInvoiceEmail - A function that handles generating the email content.
+ * - sendInvoiceEmail - A function that handles generating and sending the email.
  * - SendInvoiceEmailInput - The input type for the sendInvoiceEmail function.
  * - SendInvoiceEmailOutput - The return type for the sendInvoiceEmail function.
  */
 
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
+import { Resend } from 'resend';
 
 const SendInvoiceEmailInputSchema = z.object({
   customerName: z.string().describe('The name of the customer.'),
@@ -40,9 +41,10 @@ const prompt = ai.definePrompt({
   input: { schema: SendInvoiceEmailInputSchema },
   output: { schema: SendInvoiceEmailOutputSchema },
   prompt: `
-    You are an email sending service. Your task is to generate a professional invoice email.
+    You are an email generating service. Your task is to generate a professional invoice email.
     
     Generate a subject and a body for an invoice email based on the following details.
+    The email body should be plain text, not HTML.
     
     - Customer Name: {{{customerName}}}
     - Rented PC: {{{pcName}}}
@@ -64,21 +66,43 @@ const sendInvoiceEmailFlow = ai.defineFlow(
     outputSchema: SendInvoiceEmailOutputSchema,
   },
   async (input) => {
-    // In a real application, you would add logic here to use a service like
-    // SendGrid, Resend, or Nodemailer to actually send the email.
-    // For now, we will just generate the content and return success.
-
-    console.log(`INFO: Simulating sending email to ${input.customerEmail}`);
-
+    // 1. Generate the email content using AI
+    console.log(`INFO: Generating email content for ${input.customerEmail}`);
     const { output } = await prompt(input);
-    
-    // Simulate a short delay for sending the email
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    console.log(`INFO: Email content generated for ${input.customerEmail}`);
-    console.log('Subject:', output!.emailSubject);
-    console.log('Body:', output!.emailBody);
 
-    return output!;
+    if (!output) {
+      throw new Error('Failed to generate email content.');
+    }
+
+    // 2. Send the email using Resend
+    const resend = new Resend(process.env.RESEND_API_KEY);
+
+    try {
+      console.log(`INFO: Sending email to ${input.customerEmail} via Resend.`);
+      
+      // IMPORTANT: Resend's free tier requires you to send emails FROM a verified domain
+      // you own, and TO your own email address. For this to work, you will need to
+      // sign up at resend.com, verify your domain, and you might need to change
+      // the `to` and `from` fields below.
+      const { data, error } = await resend.emails.send({
+        from: 'ComRent <onboarding@resend.dev>', // Replace with your verified sender domain
+        to: [input.customerEmail],
+        subject: output.emailSubject,
+        text: output.emailBody,
+      });
+
+      if (error) {
+        console.error('Resend API Error:', error);
+        // We will still return the generated content, but mark success as false
+        return { ...output, success: false };
+      }
+
+      console.log('INFO: Email sent successfully via Resend:', data);
+      return { ...output, success: true };
+
+    } catch (e) {
+      console.error('Failed to send email:', e);
+      return { ...output, success: false };
+    }
   }
 );
