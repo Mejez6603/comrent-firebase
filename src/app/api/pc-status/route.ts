@@ -39,23 +39,20 @@ function updateStatuses() {
     if (pc.status === 'in_use' && pc.session_start && pc.session_duration) {
       const endTime = new Date(pc.session_start).getTime() + pc.session_duration * 60 * 1000;
       if (Date.now() > endTime) {
-        return { ...pc, status: 'available', user: undefined, session_start: undefined, session_duration: undefined };
+        return { ...pc, status: 'pending_payment', user: undefined, session_start: undefined, session_duration: undefined };
       }
     }
-
+    
     // Randomly change status for a small percentage of available PCs
-    if (pc.status === 'available' && Math.random() < 0.05) {
-      const newStatus = statuses[Math.floor(Math.random() * statuses.length)];
-      if (newStatus === 'in_use') {
-         return { 
-            ...pc, 
-            status: 'in_use',
-            user: `user_${Math.random().toString(36).substring(7)}`,
-            session_start: new Date().toISOString(),
-            session_duration: [30, 60, 120][Math.floor(Math.random() * 3)],
-        };
-      }
-      return { ...pc, status: newStatus };
+    if (pc.status === 'available' && Math.random() < 0.01) {
+      const newStatus = 'in_use';
+        return { 
+          ...pc, 
+          status: newStatus,
+          user: `user_${Math.random().toString(36).substring(7)}`,
+          session_start: new Date().toISOString(),
+          session_duration: [30, 60, 120][Math.floor(Math.random() * 3)],
+      };
     }
 
     return pc;
@@ -84,6 +81,39 @@ export async function POST(request: Request) {
       }
   
       pcs[pcIndex].name = newName;
+  
+      return NextResponse.json(pcs[pcIndex]);
+    } catch (error) {
+      return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
+    }
+}
+
+export async function PUT(request: Request) {
+    try {
+      const { id, newStatus } = await request.json();
+  
+      if (!id || !newStatus) {
+        return NextResponse.json({ message: 'Missing id or newStatus' }, { status: 400 });
+      }
+  
+      const pcIndex = pcs.findIndex(p => p.id === id);
+  
+      if (pcIndex === -1) {
+        return NextResponse.json({ message: 'PC not found' }, { status: 404 });
+      }
+
+      if (!statuses.includes(newStatus)) {
+        return NextResponse.json({ message: 'Invalid status' }, { status: 400 });
+      }
+  
+      pcs[pcIndex].status = newStatus;
+
+      // Reset fields if status changes to available, maintenance, or unavailable
+      if (['available', 'maintenance', 'unavailable', 'pending_payment'].includes(newStatus)) {
+        pcs[pcIndex].user = undefined;
+        pcs[pcIndex].session_start = undefined;
+        pcs[pcIndex].session_duration = undefined;
+      }
   
       return NextResponse.json(pcs[pcIndex]);
     } catch (error) {

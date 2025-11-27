@@ -38,6 +38,12 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
   } from "@/components/ui/alert-dialog";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+  } from "@/components/ui/dropdown-menu";
 
 type StatusConfig = {
     [key in PCStatus]: {
@@ -75,6 +81,8 @@ const statusConfig: StatusConfig = {
     },
 };
 
+const ALL_STATUSES = Object.keys(statusConfig) as PCStatus[];
+
 export function AdminPcTable({ pcs, setPcs }: { pcs: PC[], setPcs: React.Dispatch<React.SetStateAction<PC[]>> }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
@@ -91,7 +99,7 @@ export function AdminPcTable({ pcs, setPcs }: { pcs: PC[], setPcs: React.Dispatc
     setEditingName('');
   };
 
-  const handleSave = async (id: string) => {
+  const handleSaveName = async (id: string) => {
     try {
       const response = await fetch('/api/pc-status', {
         method: 'POST',
@@ -161,6 +169,37 @@ export function AdminPcTable({ pcs, setPcs }: { pcs: PC[], setPcs: React.Dispatc
     }
   };
 
+  const handleStatusChange = async (pcId: string, newStatus: PCStatus) => {
+    try {
+        const response = await fetch('/api/pc-status', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ id: pcId, newStatus }),
+        });
+  
+        if (!response.ok) {
+          throw new Error('Failed to update PC status');
+        }
+  
+        const updatedPc: PC = await response.json();
+        
+        setPcs(prevPcs => prevPcs.map(p => (p.id === updatedPc.id ? updatedPc : p)));
+        
+        toast({
+          title: 'Status Updated',
+          description: `PC "${updatedPc.name}" is now ${statusConfig[newStatus].label}.`,
+        });
+      } catch (error) {
+        console.error(error);
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: 'Could not update PC status.',
+        });
+      }
+  };
 
   return (
     <>
@@ -205,17 +244,33 @@ export function AdminPcTable({ pcs, setPcs }: { pcs: PC[], setPcs: React.Dispatc
                       )}
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline" className={cn('border-2', config.badgeClass)}>
-                        <Icon className="mr-2 h-4 w-4" />
-                        {config.label}
-                      </Badge>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Badge variant="outline" className={cn('border-2 cursor-pointer', config.badgeClass)}>
+                                <Icon className="mr-2 h-4 w-4" />
+                                {config.label}
+                            </Badge>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                            {ALL_STATUSES.map(status => {
+                                const statusConf = statusConfig[status];
+                                const StatusIcon = statusConf.icon;
+                                return (
+                                    <DropdownMenuItem key={status} onClick={() => handleStatusChange(pc.id, status)} disabled={pc.status === status}>
+                                        <StatusIcon className="mr-2 h-4 w-4" />
+                                        <span>{statusConf.label}</span>
+                                    </DropdownMenuItem>
+                                )
+                            })}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                     <TableCell>{pc.user || '-'}</TableCell>
                     <TableCell>{timeRemaining}</TableCell>
                     <TableCell className="text-right">
                       {isEditing ? (
                         <div className="flex gap-2 justify-end">
-                          <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleSave(pc.id)}>
+                          <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleSaveName(pc.id)}>
                             <Save className="h-4 w-4" />
                           </Button>
                           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleCancelEdit}>
