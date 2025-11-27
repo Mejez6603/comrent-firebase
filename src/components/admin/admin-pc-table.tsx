@@ -182,12 +182,7 @@ export function AdminPcTable({ pcs, setPcs }: { pcs: PC[], setPcs: React.Dispatc
     try {
         const body: any = { id: pcId, newStatus };
 
-        if (newStatus === 'in_use' && pcToUpdate.status === 'pending_approval') {
-            // This is a mock-up. In a real app, you'd retrieve the stored duration.
-            body.duration = 60; // Defaulting to 60 mins for approval
-            body.user = "Approved User";
-        }
-
+        // When approving, we don't need to send user/duration as they are already on the server
         const response = await fetch('/api/pc-status', {
           method: 'PUT',
           headers: {

@@ -122,23 +122,30 @@ export async function PUT(request: Request) {
       pcs[pcIndex].status = newStatus;
 
       if (newStatus === 'in_use') {
-        pcs[pcIndex].user = user || `user_${Math.random().toString(36).substring(7)}`;
         pcs[pcIndex].session_start = new Date().toISOString();
+        // If duration and user are not provided, it means admin is approving
+        // so we should keep the existing ones if available.
+        pcs[pcIndex].session_duration = duration || pcs[pcIndex].session_duration;
+        pcs[pcIndex].user = user || pcs[pcIndex].user || `user_${Math.random().toString(36).substring(7)}`;
+
+      } else if (newStatus === 'pending_approval') {
+        // When a user sends a payment request
+        pcs[pcIndex].user = user;
+        pcs[pcIndex].email = email;
         pcs[pcIndex].session_duration = duration;
-      } else if (['available', 'maintenance', 'unavailable', 'pending_payment', 'pending_approval'].includes(newStatus)) {
+        pcs[pcIndex].session_start = undefined; // Clear start time until approved
+      
+      } else if (['available', 'maintenance', 'unavailable', 'pending_payment'].includes(newStatus)) {
         pcs[pcIndex].user = undefined;
         pcs[pcIndex].session_start = undefined;
         pcs[pcIndex].session_duration = undefined;
-
-        if (newStatus === 'pending_approval') {
-          // In a real app, you'd store the user/email info for the admin
-          console.log(`PC ${pcs[pcIndex].name} is pending approval for ${user} (${email}) for ${duration} mins.`);
-        }
+        pcs[pcIndex].email = undefined;
       }
   
       return NextResponse.json(pcs[pcIndex]);
     } catch (error) {
-      return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
+        console.error('API PUT Error:', error);
+        return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
     }
 }
 

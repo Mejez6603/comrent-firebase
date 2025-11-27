@@ -11,6 +11,7 @@ export interface PC {
   name: string;
   status: PCStatus;
   user?: string;
+  email?: string;
   session_start?: string;
   session_duration?: number;
 }
