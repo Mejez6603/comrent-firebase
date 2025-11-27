@@ -10,7 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Monitor, Power, Hourglass, Ban, Wifi, WifiOff, Wrench } from 'lucide-react';
+import { Monitor, Power, Hourglass, Ban, Wifi, WifiOff, Wrench, CircleHelp } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 type StatusConfig = {
@@ -36,9 +36,15 @@ const statusConfig: StatusConfig = {
     clickable: false,
   },
   pending_payment: {
-    label: 'Pending',
+    label: 'Pending Payment',
     icon: Hourglass,
     cardClass: 'bg-status-pending text-status-text border-orange-400',
+    clickable: false,
+  },
+  pending_approval: {
+    label: 'Pending Approval',
+    icon: CircleHelp,
+    cardClass: 'bg-yellow-500 text-status-text border-yellow-400',
     clickable: false,
   },
   maintenance: {

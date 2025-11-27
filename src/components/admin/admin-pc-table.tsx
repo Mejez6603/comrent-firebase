@@ -21,6 +21,7 @@ import {
     Save,
     X,
     Trash2,
+    CircleHelp,
   } from 'lucide-react';
 import type { FC } from 'react';
 import { useState } from 'react';
@@ -65,9 +66,14 @@ const statusConfig: StatusConfig = {
         badgeClass: 'bg-status-using text-status-text border-blue-400',
     },
     pending_payment: {
-        label: 'Pending',
+        label: 'Pending Payment',
         icon: Hourglass,
         badgeClass: 'bg-status-pending text-status-text border-orange-400',
+    },
+    pending_approval: {
+        label: 'Pending Approval',
+        icon: CircleHelp,
+        badgeClass: 'bg-yellow-500 text-status-text border-yellow-400',
     },
     maintenance: {
       label: 'Maintenance',
@@ -170,13 +176,24 @@ export function AdminPcTable({ pcs, setPcs }: { pcs: PC[], setPcs: React.Dispatc
   };
 
   const handleStatusChange = async (pcId: string, newStatus: PCStatus) => {
+    const pcToUpdate = pcs.find(p => p.id === pcId);
+    if (!pcToUpdate) return;
+    
     try {
+        const body: any = { id: pcId, newStatus };
+
+        if (newStatus === 'in_use' && pcToUpdate.status === 'pending_approval') {
+            // This is a mock-up. In a real app, you'd retrieve the stored duration.
+            body.duration = 60; // Defaulting to 60 mins for approval
+            body.user = "Approved User";
+        }
+
         const response = await fetch('/api/pc-status', {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ id: pcId, newStatus }),
+          body: JSON.stringify(body),
         });
   
         if (!response.ok) {

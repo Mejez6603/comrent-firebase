@@ -11,6 +11,7 @@ const statuses: PCStatus[] = [
   'available',
   'in_use',
   'pending_payment',
+  'pending_approval',
   'maintenance',
   'unavailable',
 ];
@@ -59,10 +60,22 @@ function updateStatuses() {
   });
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   await new Promise(resolve => setTimeout(resolve, Math.random() * 300));
   
+  const { searchParams } = new URL(request.url);
+  const pcId = searchParams.get('id');
+
   updateStatuses();
+
+  if (pcId) {
+    const pc = pcs.find(p => p.id === pcId);
+    if (pc) {
+      return NextResponse.json(pc);
+    }
+    return NextResponse.json({ message: 'PC not found' }, { status: 404 });
+  }
+
   return NextResponse.json(pcs);
 }
 
@@ -90,7 +103,7 @@ export async function POST(request: Request) {
 
 export async function PUT(request: Request) {
     try {
-      const { id, newStatus } = await request.json();
+      const { id, newStatus, duration, user, email } = await request.json();
   
       if (!id || !newStatus) {
         return NextResponse.json({ message: 'Missing id or newStatus' }, { status: 400 });
@@ -108,11 +121,19 @@ export async function PUT(request: Request) {
   
       pcs[pcIndex].status = newStatus;
 
-      // Reset fields if status changes to available, maintenance, or unavailable
-      if (['available', 'maintenance', 'unavailable', 'pending_payment'].includes(newStatus)) {
+      if (newStatus === 'in_use') {
+        pcs[pcIndex].user = user || `user_${Math.random().toString(36).substring(7)}`;
+        pcs[pcIndex].session_start = new Date().toISOString();
+        pcs[pcIndex].session_duration = duration;
+      } else if (['available', 'maintenance', 'unavailable', 'pending_payment', 'pending_approval'].includes(newStatus)) {
         pcs[pcIndex].user = undefined;
         pcs[pcIndex].session_start = undefined;
         pcs[pcIndex].session_duration = undefined;
+
+        if (newStatus === 'pending_approval') {
+          // In a real app, you'd store the user/email info for the admin
+          console.log(`PC ${pcs[pcIndex].name} is pending approval for ${user} (${email}) for ${duration} mins.`);
+        }
       }
   
       return NextResponse.json(pcs[pcIndex]);

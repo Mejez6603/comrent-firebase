@@ -2,6 +2,7 @@ export type PCStatus =
   | 'available'
   | 'in_use'
   | 'pending_payment'
+  | 'pending_approval'
   | 'maintenance'
   | 'unavailable';
 
