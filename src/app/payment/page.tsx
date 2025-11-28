@@ -24,19 +24,12 @@ import {
 import { ArrowLeft, Clock, Mail, User, CheckCircle, Loader, Send, Hourglass, PlusCircle, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
-import { PC, PaymentMethod } from '@/lib/types';
+import { PC, PaymentMethod, PricingTier } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { add, formatDistanceToNowStrict } from 'date-fns';
 import { Separator } from '@/components/ui/separator';
 
 type PaymentStep = 'selection' | 'pending_approval' | 'in_session' | 'session_ended';
-
-const durationOptions = [
-  { value: '30', label: '30 minutes', price: 30 },
-  { value: '60', label: '1 hour', price: 50 },
-  { value: '120', label: '2 hours', price: 90 },
-  { value: '180', label: '3 hours', price: 120 },
-];
 
 const paymentMethodColors: Record<PaymentMethod, string> = {
     GCash: 'bg-blue-500',
@@ -51,27 +44,38 @@ function PaymentForm() {
   const { toast } = useToast();
 
   const [pc, setPc] = useState<PC | null>(null);
-  const [duration, setDuration] = useState(durationOptions[1].value);
+  const [duration, setDuration] = useState('');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [step, setStep] = useState<PaymentStep>('selection');
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod | null>(null);
+  const [pricingTiers, setPricingTiers] = useState<PricingTier[]>([]);
 
   const [sessionEndTime, setSessionEndTime] = useState<Date | null>(null);
   const [timeRemaining, setTimeRemaining] = useState('');
   const [notified, setNotified] = useState<Record<number, boolean>>({});
 
   const selectedDuration = useMemo(
-    () => durationOptions.find(opt => opt.value === duration),
-    [duration]
+    () => pricingTiers.find(opt => opt.value === duration),
+    [duration, pricingTiers]
   );
   
   useEffect(() => {
-    if (!pcName) return;
-    
-    const fetchAllPcs = async () => {
+    async function fetchInitialData() {
+        if (!pcName) return;
+
         try {
+            // Fetch pricing tiers
+            const pricingRes = await fetch('/api/pricing');
+            if (!pricingRes.ok) throw new Error('Failed to fetch pricing');
+            const pricingData: PricingTier[] = await pricingRes.json();
+            setPricingTiers(pricingData);
+            if (pricingData.length > 0) {
+                setDuration(pricingData[0].value);
+            }
+
+            // Fetch PC data
             const res = await fetch('/api/pc-status');
             const allPcs: PC[] = await res.json();
             const currentPc = allPcs.find(p => p.name === pcName);
@@ -82,10 +86,11 @@ function PaymentForm() {
                 router.push('/');
             }
         } catch (error) {
-            toast({ variant: "destructive", title: "Error", description: "Could not fetch PC data." });
+            console.error("Failed to fetch initial data", error)
+            toast({ variant: "destructive", title: "Error", description: "Could not fetch page data." });
         }
     }
-    fetchAllPcs();
+    fetchInitialData();
   }, [pcName, router, toast]);
 
   useEffect(() => {
@@ -295,7 +300,7 @@ function PaymentForm() {
                                 <SelectValue placeholder="Select rental time" />
                             </SelectTrigger>
                             <SelectContent>
-                                {durationOptions.map(opt => (
+                                {pricingTiers.map(opt => (
                                 <SelectItem key={opt.value} value={opt.value}>
                                     {opt.label}
                                 </SelectItem>
@@ -374,7 +379,7 @@ function PaymentForm() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6 px-8">
-        {renderContent()}
+        {pricingTiers.length > 0 ? renderContent() : <div className="flex justify-center items-center h-48"><Loader className="h-8 w-8 animate-spin" /></div>}
       </CardContent>
       <CardFooter className="flex flex-col gap-4 px-8 pb-8 mt-4">
        {(step === 'selection' && !selectedPaymentMethod) && <Separator className="my-4" />}

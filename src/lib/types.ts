@@ -18,3 +18,9 @@ export interface PC {
   session_duration?: number;
   paymentMethod?: PaymentMethod;
 }
+
+export interface PricingTier {
+  value: string;
+  label: string;
+  price: number;
+}

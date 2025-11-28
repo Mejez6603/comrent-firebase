@@ -1,6 +1,6 @@
 'use client';
 import { useMemo } from 'react';
-import type { PC } from '@/lib/types';
+import type { PC, PricingTier } from '@/lib/types';
 import { BarChart, Users, DollarSign, Clock, BarChart2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -18,21 +18,15 @@ import {
 
 type AnalyticsDashboardProps = {
   pcs: PC[];
+  pricingTiers: PricingTier[];
 };
 
-const durationOptions = [
-    { value: 30, label: '30 minutes', price: 30 },
-    { value: 60, label: '1 hour', price: 50 },
-    { value: 120, label: '2 hours', price: 90 },
-    { value: 180, label: '3 hours', price: 120 },
-  ];
-
-export function AnalyticsDashboard({ pcs }: AnalyticsDashboardProps) {
+export function AnalyticsDashboard({ pcs, pricingTiers }: AnalyticsDashboardProps) {
   const stats = useMemo(() => {
     const totalRevenue = pcs
         .filter(pc => pc.status === 'pending_payment' || pc.status === 'in_use')
         .reduce((acc, pc) => {
-            const durationInfo = durationOptions.find(d => d.value === pc.session_duration);
+            const durationInfo = pricingTiers.find(d => d.value === String(pc.session_duration));
             return acc + (durationInfo?.price || 0);
         }, 0);
 
@@ -50,7 +44,7 @@ export function AnalyticsDashboard({ pcs }: AnalyticsDashboardProps) {
     }));
 
     return { totalRevenue, activeUsers, totalSessions, chartData };
-  }, [pcs]);
+  }, [pcs, pricingTiers]);
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   SidebarProvider,
   Sidebar,
@@ -12,16 +12,31 @@ import {
   SidebarFooter,
   SidebarInset,
 } from '@/components/ui/sidebar';
-import { Home, LineChart, List, User } from 'lucide-react';
+import { Home, LineChart, List, User, Tag } from 'lucide-react';
 import { AdminDashboard } from './admin-dashboard';
 import { AnalyticsDashboard } from './analytics-dashboard';
 import { AuditLog } from './audit-log';
-import { PC } from '@/lib/types';
+import { PricingManagement } from './pricing-management';
+import { PC, PricingTier } from '@/lib/types';
 
 export function AdminLayout({ children }: { children: React.ReactNode }) {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [pcs, setPcs] = useState<PC[]>([]);
   const [auditLogs, setAuditLogs] = useState<string[]>([]);
+  const [pricingTiers, setPricingTiers] = useState<PricingTier[]>([]);
+
+  useEffect(() => {
+    async function fetchPricing() {
+      try {
+        const res = await fetch('/api/pricing');
+        const data = await res.json();
+        setPricingTiers(data);
+      } catch (error) {
+        console.error("Failed to fetch pricing tiers", error);
+      }
+    }
+    fetchPricing();
+  }, []);
 
   const addAuditLog = (log: string) => {
     const timestamp = new Date().toLocaleString();
@@ -31,12 +46,14 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
   const renderContent = () => {
     switch (activeTab) {
       case 'analytics':
-        return <AnalyticsDashboard pcs={pcs} />;
+        return <AnalyticsDashboard pcs={pcs} pricingTiers={pricingTiers} />;
       case 'audit-log':
         return <AuditLog logs={auditLogs} />;
+      case 'pricing':
+        return <PricingManagement pricingTiers={pricingTiers} setPricingTiers={setPricingTiers} addAuditLog={addAuditLog} />;
       case 'dashboard':
       default:
-        return <AdminDashboard pcs={pcs} setPcs={setPcs} addAuditLog={addAuditLog} />;
+        return <AdminDashboard pcs={pcs} setPcs={setPcs} addAuditLog={addAuditLog} pricingTiers={pricingTiers} />;
     }
   };
 
@@ -71,6 +88,16 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
               >
                 <LineChart />
                 <span>Analytics</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+             <SidebarMenuItem>
+              <SidebarMenuButton
+                onClick={() => setActiveTab('pricing')}
+                isActive={activeTab === 'pricing'}
+                tooltip="Pricing"
+              >
+                <Tag />
+                <span>Pricing</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>

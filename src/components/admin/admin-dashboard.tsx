@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import type { PC } from '@/lib/types';
+import type { PC, PricingTier } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, RefreshCw } from "lucide-react";
@@ -12,9 +12,10 @@ type AdminDashboardProps = {
     pcs: PC[];
     setPcs: React.Dispatch<React.SetStateAction<PC[]>>;
     addAuditLog: (log: string) => void;
+    pricingTiers: PricingTier[];
 }
 
-export function AdminDashboard({ pcs, setPcs, addAuditLog }: AdminDashboardProps) {
+export function AdminDashboard({ pcs, setPcs, addAuditLog, pricingTiers }: AdminDashboardProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
@@ -86,6 +87,7 @@ export function AdminDashboard({ pcs, setPcs, addAuditLog }: AdminDashboardProps
         addAuditLog={addAuditLog}
         onRefresh={handleRefresh}
         isRefreshing={isRefreshing}
+        pricingTiers={pricingTiers}
       />
     </>
   );

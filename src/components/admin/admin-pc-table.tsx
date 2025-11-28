@@ -1,5 +1,5 @@
 'use client';
-import type { PC, PCStatus, PaymentMethod } from '@/lib/types';
+import type { PC, PCStatus, PaymentMethod, PricingTier } from '@/lib/types';
 import {
   Table,
   TableBody,
@@ -106,22 +106,16 @@ const statusConfig: StatusConfig = {
 
 const ALL_STATUSES = Object.keys(statusConfig) as PCStatus[];
 
-const durationOptions = [
-    { value: 30, label: '30 minutes', price: 30 },
-    { value: 60, label: '1 hour', price: 50 },
-    { value: 120, label: '2 hours', price: 90 },
-    { value: 180, label: '3 hours', price: 120 },
-  ];
-
 type AdminPcTableProps = { 
     pcs: PC[], 
     setPcs: React.Dispatch<React.SetStateAction<PC[]>>,
     addAuditLog: (log: string) => void;
     onRefresh: () => void;
     isRefreshing: boolean;
+    pricingTiers: PricingTier[];
 }
 
-export function AdminPcTable({ pcs, setPcs, addAuditLog, onRefresh, isRefreshing }: AdminPcTableProps) {
+export function AdminPcTable({ pcs, setPcs, addAuditLog, onRefresh, isRefreshing, pricingTiers }: AdminPcTableProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<PC | null>(null);
@@ -225,7 +219,7 @@ export function AdminPcTable({ pcs, setPcs, addAuditLog, onRefresh, isRefreshing
     setInvoicePc(pc);
     setIsGenerating(true);
 
-    const durationInfo = durationOptions.find(d => d.value === pc.session_duration);
+    const durationInfo = pricingTiers.find(d => d.value === String(pc.session_duration));
     if (!durationInfo) {
         toast({variant: "destructive", title: "Error", description: "Invalid session duration."});
         setIsGenerating(false);
