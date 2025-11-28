@@ -30,6 +30,12 @@
     --status-pending: 35 92% 61%;
     --status-unavailable: 0 84% 60%;
     --status-text: 0 0% 100%;
+
+    --chart-1: 225 52% 60%;
+    --chart-2: 273 59% 65%;
+    --chart-3: 180 55% 55%;
+    --chart-4: 35 92% 71%;
+    --chart-5: 350 80% 65%;
   }
   .dark {
     --background: 222 47% 11%;
@@ -57,6 +63,12 @@
     --status-pending: 35 92% 71%;
     --status-unavailable: 0 72% 51%;
     --status-text: 0 0% 100%;
+
+    --chart-1: 225 52% 60%;
+    --chart-2: 273 59% 65%;
+    --chart-3: 180 55% 55%;
+    --chart-4: 35 92% 71%;
+    --chart-5: 350 80% 65%;
   }
 }
 

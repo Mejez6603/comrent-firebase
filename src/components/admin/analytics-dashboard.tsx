@@ -248,7 +248,7 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
                 <Line
                   dataKey="revenue"
                   type="monotone"
-                  stroke="hsl(var(--primary))"
+                  stroke="hsl(var(--chart-1))"
                   strokeWidth={2}
                   dot={false}
                   yAxisId="left"
@@ -279,7 +279,7 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
                     cursor={false}
                     content={<ChartTooltipContent indicator="dot" />}
                 />
-                <Bar dataKey="sessions" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} name="Sessions" />
+                <Bar dataKey="sessions" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} name="Sessions" />
               </RechartsBarChart>
             </ChartContainer>
           </CardContent>
