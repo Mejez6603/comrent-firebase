@@ -29,9 +29,10 @@ export function useChat() {
 
 type ChatProviderProps = {
     children: ReactNode;
+    role: 'user' | 'admin';
 };
 
-export function ChatProvider({ children }: ChatProviderProps) {
+export function ChatProvider({ children, role }: ChatProviderProps) {
   const searchParams = useSearchParams();
   const pcNameFromUrl = searchParams.get('pc');
   const { toast } = useToast();
@@ -41,7 +42,7 @@ export function ChatProvider({ children }: ChatProviderProps) {
   const [conversations, setConversations] = useState<Record<string, Message[]>>({});
   const [activeConversation, setActiveConversationState] = useState<string | null>(pcNameFromUrl || null);
   const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
-  const role = activeConversation ? 'user' : 'admin';
+  
 
   // For user-side, fetch the specific PC data and reserve it
   useEffect(() => {
@@ -54,7 +55,7 @@ export function ChatProvider({ children }: ChatProviderProps) {
             const currentPc = allPcs.find(p => p.name === activeConversation);
 
             if (currentPc) {
-                if (currentPc.status !== 'available' && currentPc.status !== 'pending_payment' && currentPc.status !== 'pending_approval' && currentPc.status !== 'in_use') {
+                if (currentPc.status !== 'available' && currentPc.status !== 'pending_payment' && currentPc.status !== 'pending_approval' && currentPc.status !== 'in_use' && currentPc.status !== 'time_up') {
                     toast({ variant: "destructive", title: "PC Not Available", description: `${activeConversation} is currently not available for rent.` });
                     router.push('/');
                     return;
@@ -95,6 +96,7 @@ export function ChatProvider({ children }: ChatProviderProps) {
             const allPcs = await allPcsResponse.json();
             const newConversations: Record<string, Message[]> = {};
             const newUnreadCounts: Record<string, number> = {};
+            const activePcNamesWithMessages = new Set<string>();
 
             for (const pc of allPcs) {
                 const response = await fetch(`/api/messages?pcName=${pc.name}`);
@@ -102,9 +104,24 @@ export function ChatProvider({ children }: ChatProviderProps) {
                 if (messages.length > 0) {
                     newConversations[pc.name] = messages;
                     newUnreadCounts[pc.name] = messages.filter(m => !m.isRead && m.sender !== role).length;
+                    activePcNamesWithMessages.add(pc.name);
                 }
             }
-            setConversations(newConversations);
+             
+            setConversations(currentConversations => {
+                const updatedConversations = {...currentConversations};
+                // Remove conversations that no longer exist on the server
+                for(const pcName in updatedConversations) {
+                    if(!activePcNamesWithMessages.has(pcName)) {
+                        delete updatedConversations[pcName];
+                    }
+                }
+                // Add or update conversations
+                for(const pcName in newConversations) {
+                    updatedConversations[pcName] = newConversations[pcName];
+                }
+                return updatedConversations;
+            });
             setUnreadCounts(newUnreadCounts);
         } else if (role === 'user' && pc) {
             // Fetch messages for the user's current PC
