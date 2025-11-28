@@ -7,8 +7,13 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { AdminPcTable } from './admin-pc-table';
 
-export function AdminDashboard() {
-  const [pcs, setPcs] = useState<PC[]>([]);
+type AdminDashboardProps = {
+    pcs: PC[];
+    setPcs: React.Dispatch<React.SetStateAction<PC[]>>;
+    addAuditLog: (log: string) => void;
+}
+
+export function AdminDashboard({ pcs, setPcs, addAuditLog }: AdminDashboardProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isOnline, setIsOnline] = useState(true);
 
@@ -30,11 +35,16 @@ export function AdminDashboard() {
       }
     };
 
-    fetchStatuses();
-    const intervalId = setInterval(fetchStatuses, 5000); // Polling less frequently as we update state locally
+    if (pcs.length === 0) {
+        fetchStatuses();
+    } else {
+        setIsLoading(false);
+    }
+
+    const intervalId = setInterval(fetchStatuses, 5000); 
 
     return () => clearInterval(intervalId);
-  }, [isOnline, isLoading]);
+  }, [isOnline, isLoading, setPcs, pcs.length]);
 
   if (isLoading) {
     return (
@@ -56,7 +66,7 @@ export function AdminDashboard() {
             </AlertDescription>
         </Alert>
       )}
-      <AdminPcTable pcs={pcs} setPcs={setPcs} />
+      <AdminPcTable pcs={pcs} setPcs={setPcs} addAuditLog={addAuditLog} />
     </>
   );
 }

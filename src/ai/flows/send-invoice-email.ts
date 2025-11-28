@@ -2,44 +2,46 @@
 /**
  * @fileOverview An AI flow to generate and send an invoice email.
  *
- * - sendInvoiceEmail - A function that handles generating and sending the email.
- * - SendInvoiceEmailInput - The input type for the sendInvoiceEmail function.
- * - SendInvoiceEmailOutput - The return type for the sendInvoiceEmail function.
+ * - generateInvoiceEmail - Generates the content for an invoice email.
+ * - sendGeneratedEmail - Sends a pre-generated email.
+ * - GenerateInvoiceEmailInput - The input type for the generation function.
+ * - GenerateInvoiceEmailOutput - The return type for the generation function.
+ * - SendGeneratedEmailInput - The input type for the sending function.
  */
 
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 import { Resend } from 'resend';
 
-const SendInvoiceEmailInputSchema = z.object({
+// Schema for generating email content
+const GenerateInvoiceEmailInputSchema = z.object({
   customerName: z.string().describe('The name of the customer.'),
-  customerEmail: z.string().describe('The email address of the customer.'),
   pcName: z.string().describe('The name of the PC rented.'),
   duration: z.string().describe('The duration of the rental session.'),
   amount: z.string().describe('The total cost of the rental.'),
   companyName: z.string().describe('The name of your rental company.'),
 });
-export type SendInvoiceEmailInput = z.infer<typeof SendInvoiceEmailInputSchema>;
+export type GenerateInvoiceEmailInput = z.infer<typeof GenerateInvoiceEmailInputSchema>;
 
-const SendInvoiceEmailOutputSchema = z.object({
-  success: z.boolean().describe('Whether the email was sent successfully.'),
+const GenerateInvoiceEmailOutputSchema = z.object({
   emailSubject: z.string().describe('The subject line of the email.'),
-  emailBody: z.string().describe('The full body content of the email.'),
+  emailBody: z.string().describe('The full body content of the email in plain text.'),
 });
-export type SendInvoiceEmailOutput = z.infer<
-  typeof SendInvoiceEmailOutputSchema
->;
+export type GenerateInvoiceEmailOutput = z.infer<typeof GenerateInvoiceEmailOutputSchema>;
 
-export async function sendInvoiceEmail(
-  input: SendInvoiceEmailInput
-): Promise<SendInvoiceEmailOutput> {
-  return sendInvoiceEmailFlow(input);
-}
+// Schema for sending the generated email
+const SendGeneratedEmailInputSchema = z.object({
+  customerEmail: z.string().describe("The recipient's email address."),
+  emailSubject: z.string().describe('The subject line of the email.'),
+  emailBody: z.string().describe('The body of the email.'),
+  fromAddress: z.string().describe("The sender's email address (e.g., 'Your Company <no-reply@yourdomain.com>')")
+});
+export type SendGeneratedEmailInput = z.infer<typeof SendGeneratedEmailInputSchema>;
 
-const prompt = ai.definePrompt({
-  name: 'sendInvoiceEmailPrompt',
-  input: { schema: SendInvoiceEmailInputSchema },
-  output: { schema: SendInvoiceEmailOutputSchema },
+const emailGenerationPrompt = ai.definePrompt({
+  name: 'generateInvoiceEmailPrompt',
+  input: { schema: GenerateInvoiceEmailInputSchema },
+  output: { schema: GenerateInvoiceEmailOutputSchema },
   prompt: `
     You are an email generating service. Your task is to generate a professional invoice email.
     
@@ -53,54 +55,67 @@ const prompt = ai.definePrompt({
     - Company Name: {{{companyName}}}
     
     The email should be friendly and clear.
-    
-    Crucially, you must always respond by setting 'success' to true in the output JSON.
     DO NOT add any markdown like \`\`\`json to your output.
   `,
 });
 
-const sendInvoiceEmailFlow = ai.defineFlow(
+
+const generateInvoiceEmailFlow = ai.defineFlow(
   {
-    name: 'sendInvoiceEmailFlow',
-    inputSchema: SendInvoiceEmailInputSchema,
-    outputSchema: SendInvoiceEmailOutputSchema,
+    name: 'generateInvoiceEmailFlow',
+    inputSchema: GenerateInvoiceEmailInputSchema,
+    outputSchema: GenerateInvoiceEmailOutputSchema,
   },
   async (input) => {
-    // 1. Generate the email content using AI
-    console.log(`INFO: Generating email content for ${input.customerEmail}`);
-    const { output } = await prompt(input);
-
+    const { output } = await emailGenerationPrompt(input);
     if (!output) {
       throw new Error('Failed to generate email content.');
     }
+    return output;
+  }
+);
 
-    // 2. Send the email using Resend
+export async function generateInvoiceEmail(
+  input: GenerateInvoiceEmailInput
+): Promise<GenerateInvoiceEmailOutput> {
+  return generateInvoiceEmailFlow(input);
+}
+
+
+const sendGeneratedEmailFlow = ai.defineFlow(
+  {
+    name: 'sendGeneratedEmailFlow',
+    inputSchema: SendGeneratedEmailInputSchema,
+    outputSchema: z.object({ success: z.boolean(), message: z.string() }),
+  },
+  async (input) => {
     const resend = new Resend(process.env.RESEND_API_KEY);
 
     try {
-      console.log(`INFO: Sending email to ${input.customerEmail} via Resend.`);
-      
-      // IMPORTANT: To send emails, you must have a domain verified with Resend.
-      // Replace 'onboarding@resend.dev' with an email from your verified domain.
+      console.log(`INFO: Sending email to ${input.customerEmail}`);
       const { data, error } = await resend.emails.send({
-        from: 'ComRent <CHANGE_ME@YOUR_VERIFIED_DOMAIN.COM>', // This will be your verified email
-        to: [input.customerEmail], // Now sending to the actual customer
-        subject: output.emailSubject,
-        text: output.emailBody,
+        from: input.fromAddress,
+        to: [input.customerEmail],
+        subject: input.emailSubject,
+        text: input.emailBody,
       });
 
       if (error) {
         console.error('Resend API Error:', error);
-        // We will still return the generated content, but mark success as false
-        return { ...output, success: false };
+        return { success: false, message: error.message };
       }
 
-      console.log('INFO: Email sent successfully via Resend:', data);
-      return { ...output, success: true };
-
-    } catch (e) {
+      console.log('INFO: Email sent successfully:', data);
+      return { success: true, message: `Email sent successfully to ${input.customerEmail}` };
+    } catch (e: any) {
       console.error('Failed to send email:', e);
-      return { ...output, success: false };
+      return { success: false, message: e.message || 'An unknown error occurred.' };
     }
   }
 );
+
+export async function sendGeneratedEmail(
+    input: SendGeneratedEmailInput
+  ): Promise<{ success: boolean, message: string }> {
+    return sendGeneratedEmailFlow(input);
+  }

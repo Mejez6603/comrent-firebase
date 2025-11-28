@@ -25,6 +25,7 @@ import {
     Mail,
     Send,
     Loader,
+    FileText,
   } from 'lucide-react';
 import type { FC } from 'react';
 import { useState } from 'react';
@@ -43,12 +44,22 @@ import {
     AlertDialogTitle,
   } from "@/components/ui/alert-dialog";
 import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
+import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger,
   } from "@/components/ui/dropdown-menu";
-import { sendInvoiceEmail } from '@/ai/flows/send-invoice-email';
+import { generateInvoiceEmail, sendGeneratedEmail, GenerateInvoiceEmailOutput } from '@/ai/flows/send-invoice-email';
+import { Label } from '../ui/label';
+import { Textarea } from '../ui/textarea';
 
 type StatusConfig = {
     [key in PCStatus]: {
@@ -94,17 +105,28 @@ const statusConfig: StatusConfig = {
 const ALL_STATUSES = Object.keys(statusConfig) as PCStatus[];
 
 const durationOptions = [
-    { value: '30', label: '30 minutes', price: 30 },
-    { value: '60', label: '1 hour', price: 50 },
-    { value: '120', label: '2 hours', price: 90 },
-    { value: '180', label: '3 hours', price: 120 },
+    { value: 30, label: '30 minutes', price: 30 },
+    { value: 60, label: '1 hour', price: 50 },
+    { value: 120, label: '2 hours', price: 90 },
+    { value: 180, label: '3 hours', price: 120 },
   ];
 
-export function AdminPcTable({ pcs, setPcs }: { pcs: PC[], setPcs: React.Dispatch<React.SetStateAction<PC[]>> }) {
+type AdminPcTableProps = { 
+    pcs: PC[], 
+    setPcs: React.Dispatch<React.SetStateAction<PC[]>>,
+    addAuditLog: (log: string) => void;
+}
+
+export function AdminPcTable({ pcs, setPcs, addAuditLog }: AdminPcTableProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<PC | null>(null);
-  const [sendingEmailId, setSendingEmailId] = useState<string | null>(null);
+  
+  const [invoicePc, setInvoicePc] = useState<PC | null>(null);
+  const [invoiceContent, setInvoiceContent] = useState<GenerateInvoiceEmailOutput | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+
   const { toast } = useToast();
 
   const handleEdit = (pc: PC) => {
@@ -118,34 +140,25 @@ export function AdminPcTable({ pcs, setPcs }: { pcs: PC[], setPcs: React.Dispatc
   };
 
   const handleSaveName = async (id: string) => {
+    const oldPc = pcs.find(p => p.id === id);
+    if (!oldPc) return;
+
     try {
       const response = await fetch('/api/pc-status', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id, newName: editingName }),
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to update PC name');
-      }
-
+      if (!response.ok) throw new Error('Failed to update PC name');
       const updatedPc: PC = await response.json();
       
       setPcs(prevPcs => prevPcs.map(p => (p.id === updatedPc.id ? updatedPc : p)));
-      
-      toast({
-        title: 'Success',
-        description: `PC name updated to "${updatedPc.name}"`,
-      });
+      addAuditLog(`Edited PC name from "${oldPc.name}" to "${updatedPc.name}".`);
+      toast({ title: 'Success', description: `PC name updated to "${updatedPc.name}"` });
     } catch (error) {
       console.error(error);
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Could not update PC name.',
-      });
+      toast({ variant: 'destructive', title: 'Error', description: 'Could not update PC name.' });
     } finally {
       handleCancelEdit();
     }
@@ -157,31 +170,19 @@ export function AdminPcTable({ pcs, setPcs }: { pcs: PC[], setPcs: React.Dispatc
     try {
       const response = await fetch('/api/pc-status', {
         method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: deleteTarget.id }),
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to delete PC');
-      }
-
+      if (!response.ok) throw new Error('Failed to delete PC');
       const { deletedPcId } = await response.json();
       
       setPcs(prevPcs => prevPcs.filter(p => p.id !== deletedPcId));
-      
-      toast({
-        title: 'Success',
-        description: `PC "${deleteTarget.name}" has been deleted.`,
-      });
+      addAuditLog(`Deleted PC "${deleteTarget.name}".`);
+      toast({ title: 'Success', description: `PC "${deleteTarget.name}" has been deleted.` });
     } catch (error) {
         console.error(error);
-        toast({
-            variant: 'destructive',
-            title: 'Error',
-            description: 'Could not delete PC.',
-        });
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not delete PC.' });
     } finally {
         setDeleteTarget(null);
     }
@@ -196,69 +197,80 @@ export function AdminPcTable({ pcs, setPcs }: { pcs: PC[], setPcs: React.Dispatc
 
         const response = await fetch('/api/pc-status', {
           method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body),
         });
   
-        if (!response.ok) {
-          throw new Error('Failed to update PC status');
-        }
+        if (!response.ok) throw new Error('Failed to update PC status');
   
         const updatedPc: PC = await response.json();
         
         setPcs(prevPcs => prevPcs.map(p => (p.id === updatedPc.id ? updatedPc : p)));
         
-        toast({
-          title: 'Status Updated',
-          description: `PC "${updatedPc.name}" is now ${statusConfig[newStatus].label}.`,
-        });
+        addAuditLog(`Changed status of "${updatedPc.name}" from "${pcToUpdate.status}" to "${newStatus}".`);
+        toast({ title: 'Status Updated', description: `PC "${updatedPc.name}" is now ${statusConfig[newStatus].label}.` });
       } catch (error) {
         console.error(error);
-        toast({
-          variant: 'destructive',
-          title: 'Error',
-          description: 'Could not update PC status.',
-        });
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not update PC status.' });
       }
   };
 
-  const handleSendInvoice = async (pc: PC) => {
+  const handleOpenInvoiceDialog = async (pc: PC) => {
     if (!pc.email || !pc.session_duration || !pc.user) return;
+    
+    setInvoicePc(pc);
+    setIsGenerating(true);
 
-    const durationInfo = durationOptions.find(d => String(d.value) === String(pc.session_duration));
-    if (!durationInfo) return;
-
-    setSendingEmailId(pc.id);
+    const durationInfo = durationOptions.find(d => d.value === pc.session_duration);
+    if (!durationInfo) {
+        toast({variant: "destructive", title: "Error", description: "Invalid session duration."});
+        setIsGenerating(false);
+        return;
+    };
 
     try {
-      const result = await sendInvoiceEmail({
-        customerName: pc.user,
-        customerEmail: pc.email,
-        pcName: pc.name,
-        duration: durationInfo.label,
-        amount: `₱${durationInfo.price.toFixed(2)}`,
-        companyName: 'ComRent',
-      });
-
-      if (result.success) {
-        toast({
-            title: 'Invoice Sent!',
-            description: `Email has been sent to ${pc.email}.`,
+        const content = await generateInvoiceEmail({
+            customerName: pc.user,
+            pcName: pc.name,
+            duration: durationInfo.label,
+            amount: `₱${durationInfo.price.toFixed(2)}`,
+            companyName: 'ComRent',
         });
-      } else {
-        throw new Error('Flow returned success: false');
-      }
+        setInvoiceContent(content);
     } catch (error) {
-      console.error('Failed to send invoice email:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Could not send invoice email.',
-      });
+        console.error("Failed to generate invoice content:", error);
+        toast({ variant: 'destructive', title: 'AI Error', description: 'Could not generate email content.' });
+        setInvoicePc(null);
     } finally {
-      setSendingEmailId(null);
+        setIsGenerating(false);
+    }
+  }
+
+  const handleSendInvoice = async () => {
+    if (!invoicePc || !invoiceContent || !invoicePc.email) return;
+
+    setIsSending(true);
+    try {
+        const result = await sendGeneratedEmail({
+            customerEmail: invoicePc.email,
+            emailSubject: invoiceContent.emailSubject,
+            emailBody: invoiceContent.emailBody,
+            fromAddress: 'ComRent <onboarding@resend.dev>'
+        });
+
+        if (result.success) {
+            addAuditLog(`Sent invoice to ${invoicePc.email} for PC "${invoicePc.name}".`);
+            toast({ title: 'Invoice Sent!', description: `Email has been sent to ${invoicePc.email}.`});
+        } else {
+            throw new Error(result.message || 'Flow returned success: false');
+        }
+    } catch(error: any) {
+        console.error('Failed to send invoice email:', error);
+        toast({ variant: 'destructive', title: 'Sending Error', description: error.message || 'Could not send invoice email.' });
+    } finally {
+        setIsSending(false);
+        setInvoicePc(null);
+        setInvoiceContent(null);
     }
   };
 
@@ -285,7 +297,6 @@ export function AdminPcTable({ pcs, setPcs }: { pcs: PC[], setPcs: React.Dispatc
                 const config = statusConfig[pc.status];
                 const Icon = config.icon;
                 const isEditing = editingId === pc.id;
-                const isSendingEmail = sendingEmailId === pc.id;
                 
                 let timeRemaining = '-';
                 if (pc.status === 'in_use' && pc.session_start && pc.session_duration) {
@@ -332,50 +343,35 @@ export function AdminPcTable({ pcs, setPcs }: { pcs: PC[], setPcs: React.Dispatc
                       </DropdownMenu>
                     </TableCell>
                     <TableCell>{pc.user || '-'}</TableCell>
-                    <TableCell>
-                      {pc.email ? (
-                        <Button 
-                            variant="link" 
-                            className="p-0 h-auto text-accent"
-                            onClick={() => handleSendInvoice(pc)}
-                            disabled={isSendingEmail}
-                        >
-                          {isSendingEmail ? (
+                    <TableCell>{pc.email || '-'}</TableCell>
+                    <TableCell>{timeRemaining}</TableCell>
+                    <TableCell className="text-right">
+                        <div className="flex gap-1 justify-end">
+                            {pc.email && ['pending_payment', 'in_use'].includes(pc.status) && (
+                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleOpenInvoiceDialog(pc)}>
+                                    <FileText className="h-4 w-4" />
+                                </Button>
+                            )}
+                          {isEditing ? (
                             <>
-                              <Loader className="mr-2 h-3 w-3 animate-spin" />
-                              Sending...
+                              <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleSaveName(pc.id)}>
+                                <Save className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleCancelEdit}>
+                                <X className="h-4 w-4" />
+                              </Button>
                             </>
                           ) : (
                             <>
-                              <Send className="mr-2 h-3 w-3" /> {pc.email}
+                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(pc)}>
+                                    <Pencil className="h-4 w-4" />
+                                </Button>
+                                 <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleteTarget(pc)}>
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
                             </>
                           )}
-                        </Button>
-                      ) : (
-                        '-'
-                      )}
-                    </TableCell>
-                    <TableCell>{timeRemaining}</TableCell>
-                    <TableCell className="text-right">
-                      {isEditing ? (
-                        <div className="flex gap-2 justify-end">
-                          <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleSaveName(pc.id)}>
-                            <Save className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleCancelEdit}>
-                            <X className="h-4 w-4" />
-                          </Button>
                         </div>
-                      ) : (
-                        <div className="flex gap-2 justify-end">
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(pc)}>
-                                <Pencil className="h-4 w-4" />
-                            </Button>
-                             <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleteTarget(pc)}>
-                                <Trash2 className="h-4 w-4" />
-                            </Button>
-                        </div>
-                      )}
                     </TableCell>
                   </TableRow>
                 );
@@ -384,6 +380,7 @@ export function AdminPcTable({ pcs, setPcs }: { pcs: PC[], setPcs: React.Dispatc
           </Table>
         </CardContent>
       </Card>
+
       <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -401,6 +398,50 @@ export function AdminPcTable({ pcs, setPcs }: { pcs: PC[], setPcs: React.Dispatc
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={!!invoicePc} onOpenChange={() => { setInvoicePc(null); setInvoiceContent(null); }}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Email Invoice</DialogTitle>
+            <DialogDescription>
+              Preview and edit the invoice email for {invoicePc?.user} ({invoicePc?.email}).
+            </DialogDescription>
+          </DialogHeader>
+          {isGenerating ? (
+            <div className='flex items-center justify-center h-64'>
+                <Loader className='h-8 w-8 animate-spin text-primary'/>
+            </div>
+          ) : invoiceContent && (
+            <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="subject" className="text-right">Subject</Label>
+                    <Input
+                        id="subject"
+                        value={invoiceContent.emailSubject}
+                        onChange={(e) => setInvoiceContent(prev => prev ? {...prev, emailSubject: e.target.value} : null)}
+                        className="col-span-3"
+                    />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="body" className="text-right">Body</Label>
+                    <Textarea
+                        id="body"
+                        value={invoiceContent.emailBody}
+                        onChange={(e) => setInvoiceContent(prev => prev ? {...prev, emailBody: e.target.value} : null)}
+                        className="col-span-3 min-h-[250px]"
+                    />
+                </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setInvoicePc(null)}>Cancel</Button>
+            <Button onClick={handleSendInvoice} disabled={isSending || isGenerating || !invoiceContent}>
+              {isSending ? <Loader className="animate-spin mr-2"/> : <Send className="mr-2" />}
+              {isSending ? 'Sending...' : 'Send Invoice'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
