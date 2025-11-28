@@ -253,6 +253,8 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
                   dot={false}
                   yAxisId="left"
                   name="Daily Revenue"
+                  isAnimationActive={true}
+                  animationDuration={1200}
                 />
               </RechartsLineChart>
             </ChartContainer>
@@ -279,7 +281,7 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
                     cursor={false}
                     content={<ChartTooltipContent indicator="dot" />}
                 />
-                <Bar dataKey="sessions" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} name="Sessions" />
+                <Bar dataKey="sessions" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} name="Sessions" isAnimationActive={true} animationDuration={1200} />
               </RechartsBarChart>
             </ChartContainer>
           </CardContent>
@@ -304,6 +306,8 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
                             cy="50%"
                             outerRadius={80}
                             label={(entry) => `${entry.name} (${entry.value})`}
+                            isAnimationActive={true}
+                            animationDuration={1200}
                         >
                             {stats.paymentMethodChartData.map((entry, index) => (
                                 <Cell key={`cell-${index}`} fill={PIE_CHART_COLORS[index % PIE_CHART_COLORS.length]} />
@@ -338,8 +342,8 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
                         <YAxis yAxisId="right" orientation="right" stroke="hsl(var(--chart-2))" fontSize={12} tickFormatter={(val) => `₱${val}`} />
                         <ChartTooltip content={<ChartTooltipContent />} />
                         <Legend />
-                        <Bar yAxisId="left" dataKey="sessions" fill="hsl(var(--chart-1))" radius={[4, 4, 0, 0]} name="Sessions" />
-                        <Bar yAxisId="right" dataKey="revenue" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} name="Revenue (₱)" />
+                        <Bar yAxisId="left" dataKey="sessions" fill="hsl(var(--chart-1))" radius={[4, 4, 0, 0]} name="Sessions" isAnimationActive={true} animationDuration={1200} />
+                        <Bar yAxisId="right" dataKey="revenue" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} name="Revenue (₱)" isAnimationActive={true} animationDuration={1200} />
                     </RechartsBarChart>
                 </ResponsiveContainer>
             </ChartContainer>
