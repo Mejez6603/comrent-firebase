@@ -125,9 +125,9 @@ function PaymentForm() {
   }, [step, pc]);
 
   useEffect(() => {
-    if (step !== 'in_session' || !sessionEndTime) return;
+    if (step !== 'in_session' || !sessionEndTime || !pc) return;
 
-    const timerId = setInterval(() => {
+    const timerId = setInterval(async () => {
       const now = new Date();
       const endTime = new Date(sessionEndTime);
       const totalSeconds = Math.floor((endTime.getTime() - now.getTime()) / 1000);
@@ -136,9 +136,21 @@ function PaymentForm() {
         setTimeRemaining('00:00:00');
         clearInterval(timerId);
         setStep('session_ended');
+        
+        // Update status to pending_payment
+        try {
+            await fetch('/api/pc-status', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: pc.id, newStatus: 'pending_payment' })
+            });
+        } catch (error) {
+            console.error("Failed to update status to pending_payment", error);
+        }
+
         toast({
           title: "Session Ended",
-          description: "Your time is up. Would you like to extend your session?",
+          description: "Your time is up. Please settle your payment with the admin.",
           duration: 20000,
           action: (
             <Button onClick={handleExtend}><PlusCircle className="mr-2"/>Extend</Button>
@@ -173,7 +185,7 @@ function PaymentForm() {
     }, 1000);
 
     return () => clearInterval(timerId);
-  }, [step, sessionEndTime, toast, notified]);
+  }, [step, sessionEndTime, toast, notified, pc]);
 
 
   const handlePaymentMethodSelect = (method: PaymentMethod) => {
@@ -282,7 +294,7 @@ function PaymentForm() {
                     <AlertCircle className="h-20 w-20 text-destructive mx-auto" />
                     <div>
                         <h2 className="text-2xl font-bold">Session Ended</h2>
-                        <p className="text-muted-foreground">Your time on {pcName} has finished.</p>
+                        <p className="text-muted-foreground">Your time on {pcName} has finished. Please settle your payment.</p>
                     </div>
                     <div className="flex flex-col gap-3 pt-4">
                         <Button size="lg" onClick={handleExtend}>
@@ -427,15 +439,17 @@ function PaymentForm() {
       <CardContent className="space-y-6 px-8">
         {pricingTiers.length > 0 ? renderContent() : <div className="flex justify-center items-center h-48"><Loader className="h-8 w-8 animate-spin" /></div>}
       </CardContent>
-      {step === 'selection' && (
+      {(step === 'selection' || step === 'pending_approval') && (
         <CardFooter className="flex flex-col gap-4 px-8 pb-8 mt-4">
-            {!selectedPaymentMethod && <Separator className="my-4" />}
-            <Button asChild variant="ghost" className="w-full" disabled={isProcessing}>
-            <Link href="/">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Cancel and Go Back
-            </Link>
-            </Button>
+            {step === 'selection' && !selectedPaymentMethod && <Separator className="my-4" />}
+            {step === 'selection' && 
+                <Button asChild variant="ghost" className="w-full" disabled={isProcessing}>
+                    <Link href="/">
+                        <ArrowLeft className="mr-2 h-4 w-4" />
+                        Cancel and Go Back
+                    </Link>
+                </Button>
+            }
         </CardFooter>
       )}
     </Card>
@@ -452,5 +466,3 @@ export default function PaymentPage() {
     </main>
   );
 }
-
-    

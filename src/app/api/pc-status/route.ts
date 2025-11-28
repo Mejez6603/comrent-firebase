@@ -40,17 +40,11 @@ pcs[7].paymentMethod = 'QR Code';
 pcs[10].status = 'unavailable';
 
 
+// This function now serves as a fallback or for simulating random events,
+// but the primary status changes (like session end) are driven by the client.
 function updateStatuses() {
   pcs = pcs.map(pc => {
-    // Simulate session ending for 'in_use' PCs
-    if (pc.status === 'in_use' && pc.session_start && pc.session_duration) {
-      const endTime = new Date(pc.session_start).getTime() + pc.session_duration * 60 * 1000;
-      if (Date.now() > endTime) {
-        return { ...pc, status: 'pending_payment', session_start: undefined, session_duration: undefined };
-      }
-    }
-    
-    // Randomly change status for a small percentage of available PCs
+    // Randomly change status for a small percentage of available PCs to simulate new users
     if (pc.status === 'available' && Math.random() < 0.01) {
       const newStatus = 'in_use';
         return { 
@@ -152,7 +146,14 @@ export async function PUT(request: Request) {
         pcs[pcIndex].paymentMethod = paymentMethod;
         pcs[pcIndex].session_start = undefined; // Clear start time until approved
       
+      } else if (newStatus === 'pending_payment') {
+        // This is triggered by the client when the session ends
+        // Keep user/email/payment info for reference
+        pcs[pcIndex].session_start = undefined;
+        // Don't clear session_duration, it's useful for analytics/invoicing
+        
       } else if (['available', 'maintenance', 'unavailable'].includes(newStatus || '')) {
+        // Clear all session-related data when resetting the PC
         pcs[pcIndex].user = undefined;
         pcs[pcIndex].session_start = undefined;
         pcs[pcIndex].session_duration = undefined;
