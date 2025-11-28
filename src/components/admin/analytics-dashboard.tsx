@@ -11,6 +11,9 @@ import {
 import {
   Bar,
   Line,
+  Pie,
+  PieChart,
+  Cell,
   BarChart as RechartsBarChart,
   LineChart as RechartsLineChart,
   XAxis,
@@ -31,6 +34,9 @@ type AnalyticsDashboardProps = {
   historicalSessions: PC[];
   pricingTiers: PricingTier[];
 };
+
+const PIE_CHART_COLORS = ["hsl(var(--chart-1))", "hsl(var(--chart-2))", "hsl(var(--chart-3))", "hsl(var(--chart-4))", "hsl(var(--chart-5))"];
+
 
 export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: AnalyticsDashboardProps) {
   const [date, setDate] = useState<DateRange | undefined>({
@@ -64,13 +70,14 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
         }
         return acc;
     }, {} as Record<PaymentMethod, number>);
+    const paymentMethodChartData = Object.entries(paymentMethodCounts).map(([name, value]) => ({ name, value }));
+
 
     const pcStatusCounts = pcs.reduce((acc, pc) => {
         acc[pc.status] = (acc[pc.status] || 0) + 1;
         return acc;
     }, {} as Record<string, number>);
 
-    // New analytics data
     const dailyRevenue = filteredSessions.reduce((acc, session) => {
         if (!session.session_start) return acc;
         const day = format(new Date(session.session_start), 'yyyy-MM-dd');
@@ -97,7 +104,28 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
         sessions: hourlyActivity[i] || 0,
       }));
 
-    return { totalRevenue, activePcsCount, totalSessions, averageSessionMinutes, paymentMethodCounts, pcStatusCounts, dailyRevenueChartData, hourlyActivityChartData };
+    const weeklyComparison = filteredSessions.reduce((acc, session) => {
+        if (!session.session_start) return acc;
+        const dayOfWeek = getDay(new Date(session.session_start));
+        const type = (dayOfWeek === 0 || dayOfWeek === 6) ? 'Weekend' : 'Weekday';
+        const durationInfo = pricingTiers.find(d => d.value === String(session.session_duration));
+        const price = durationInfo?.price || 0;
+
+        acc[type].sessions += 1;
+        acc[type].revenue += price;
+        return acc;
+    }, { 
+        Weekday: { sessions: 0, revenue: 0 },
+        Weekend: { sessions: 0, revenue: 0 }
+    });
+
+    const weeklyComparisonChartData = [
+        { name: 'Weekday', sessions: weeklyComparison.Weekday.sessions, revenue: weeklyComparison.Weekday.revenue },
+        { name: 'Weekend', sessions: weeklyComparison.Weekend.sessions, revenue: weeklyComparison.Weekend.revenue },
+    ];
+
+
+    return { totalRevenue, activePcsCount, totalSessions, averageSessionMinutes, paymentMethodCounts, pcStatusCounts, dailyRevenueChartData, hourlyActivityChartData, paymentMethodChartData, weeklyComparisonChartData };
   }, [pcs, historicalSessions, pricingTiers, date]);
 
   return (
@@ -258,6 +286,67 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
         </Card>
       </div>
 
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+        <Card className="col-span-full lg:col-span-3">
+          <CardHeader>
+            <CardTitle>Payment Method Distribution</CardTitle>
+            <CardDescription>Breakdown of transactions by payment type.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ChartContainer config={{}}>
+                <ResponsiveContainer width="100%" height={250}>
+                    <PieChart>
+                        <Pie
+                            data={stats.paymentMethodChartData}
+                            dataKey="value"
+                            nameKey="name"
+                            cx="50%"
+                            cy="50%"
+                            outerRadius={80}
+                            label={(entry) => `${entry.name} (${entry.value})`}
+                        >
+                            {stats.paymentMethodChartData.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={PIE_CHART_COLORS[index % PIE_CHART_COLORS.length]} />
+                            ))}
+                        </Pie>
+                        <ChartTooltip
+                            cursor={false}
+                            content={<ChartTooltipContent hideLabel />}
+                        />
+                        <Legend />
+                    </PieChart>
+                </ResponsiveContainer>
+            </ChartContainer>
+          </CardContent>
+        </Card>
+
+        <Card className="col-span-full lg:col-span-4">
+          <CardHeader>
+            <CardTitle>Weekday vs. Weekend Activity</CardTitle>
+            <CardDescription>A comparison of user activity and revenue.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ChartContainer config={{
+                sessions: { label: "Sessions", color: "hsl(var(--chart-1))" },
+                revenue: { label: "Revenue", color: "hsl(var(--chart-2))" },
+            }}>
+                <ResponsiveContainer width="100%" height={250}>
+                    <RechartsBarChart data={stats.weeklyComparisonChartData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
+                        <CartesianGrid vertical={false} />
+                        <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                        <YAxis yAxisId="left" stroke="hsl(var(--chart-1))" fontSize={12} />
+                        <YAxis yAxisId="right" orientation="right" stroke="hsl(var(--chart-2))" fontSize={12} tickFormatter={(val) => `₱${val}`} />
+                        <ChartTooltip content={<ChartTooltipContent />} />
+                        <Legend />
+                        <Bar yAxisId="left" dataKey="sessions" fill="hsl(var(--chart-1))" radius={[4, 4, 0, 0]} name="Sessions" />
+                        <Bar yAxisId="right" dataKey="revenue" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} name="Revenue (₱)" />
+                    </RechartsBarChart>
+                </ResponsiveContainer>
+            </ChartContainer>
+          </CardContent>
+        </Card>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>
             <CardHeader>
@@ -271,6 +360,7 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
                             <span className="font-bold">{count}</span>
                         </div>
                     ))}
+                    {Object.keys(stats.paymentMethodCounts).length === 0 && <p className='text-sm text-muted-foreground'>No payment data for this period.</p>}
                 </div>
             </CardContent>
         </Card>
@@ -293,5 +383,3 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
     </div>
   );
 }
-
-    
