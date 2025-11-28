@@ -14,7 +14,7 @@ export function PaymentHelpPopover() {
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
   useEffect(() => {
-    // Show help hint after 10 seconds, not 60
+    // Show help hint after 10 seconds
     if (!isPopoverOpen) {
       const timer = setTimeout(() => {
         setShowHelpHint(true);
