@@ -13,6 +13,7 @@ import { MessageSquare, Send, X, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback } from '../ui/avatar';
 import { formatDistanceToNow } from 'date-fns';
+import { useChatSounds } from '@/hooks/use-chat-sounds';
 
 function AdminChatUI() {
   const { conversations, activeConversation, setActiveConversation, sendMessage, unreadCounts } = useChat();
@@ -21,6 +22,9 @@ function AdminChatUI() {
   
   const activeMessages = activeConversation ? conversations[activeConversation] || [] : [];
   const hasUnread = Object.values(unreadCounts).some(count => count > 0);
+
+  // Play sound on new message
+  useChatSounds(conversations, 'admin');
 
   useEffect(() => {
     if (scrollAreaRef.current) {
