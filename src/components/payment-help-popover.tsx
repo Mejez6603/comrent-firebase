@@ -14,10 +14,11 @@ export function PaymentHelpPopover() {
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
   useEffect(() => {
+    // Show help hint after 10 seconds, not 60
     if (!isPopoverOpen) {
       const timer = setTimeout(() => {
         setShowHelpHint(true);
-      }, 60000); 
+      }, 10000); 
 
       return () => clearTimeout(timer);
     }
@@ -33,10 +34,10 @@ export function PaymentHelpPopover() {
   return (
     <>
       {showHelpHint && !isPopoverOpen && (
-        <div className="absolute bottom-20 right-0 flex animate-bounce items-center justify-center">
+        <div className="absolute bottom-[60px] right-2 flex animate-bounce items-center justify-center">
             <div className="relative rounded-full bg-primary px-4 py-2 text-primary-foreground shadow-lg">
                 <p className="text-sm font-bold">Need Help?</p>
-                <div className="absolute -bottom-2 right-1/2 h-4 w-4 translate-x-1/2 rotate-45 bg-primary"></div>
+                <div className="absolute right-[-8px] top-1/2 h-4 w-4 -translate-y-1/2 rotate-45 bg-primary"></div>
             </div>
         </div>
       )}
