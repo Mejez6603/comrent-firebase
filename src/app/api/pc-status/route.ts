@@ -1,4 +1,3 @@
-'use server';
 import { NextResponse } from 'next/server';
 import type { PC, PCStatus, PaymentMethod } from '@/lib/types';
 
