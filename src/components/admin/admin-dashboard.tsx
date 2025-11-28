@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { PC } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, RefreshCw } from "lucide-react";
 import { AdminPcTable } from './admin-pc-table';
+import { Button } from '../ui/button';
 
 type AdminDashboardProps = {
     pcs: PC[];
@@ -15,26 +16,33 @@ type AdminDashboardProps = {
 
 export function AdminDashboard({ pcs, setPcs, addAuditLog }: AdminDashboardProps) {
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
 
-  useEffect(() => {
-    const fetchStatuses = async () => {
-      try {
-        const response = await fetch('/api/pc-status');
-        if (!response.ok) {
-          throw new Error('Network response was not ok');
-        }
-        const data: PC[] = await response.json();
-        setPcs(data);
-        if (!isOnline) setIsOnline(true);
-      } catch (error) {
-        console.error('Failed to fetch PC statuses:', error);
-        if (isOnline) setIsOnline(false);
-      } finally {
-        if(isLoading) setIsLoading(false);
+  const fetchStatuses = useCallback(async () => {
+    try {
+      const response = await fetch('/api/pc-status');
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
       }
-    };
+      const data: PC[] = await response.json();
+      setPcs(data);
+      if (!isOnline) setIsOnline(true);
+    } catch (error) {
+      console.error('Failed to fetch PC statuses:', error);
+      if (isOnline) setIsOnline(false);
+    } finally {
+      if(isLoading) setIsLoading(false);
+      if(isRefreshing) setIsRefreshing(false);
+    }
+  }, [isOnline, isLoading, isRefreshing, setPcs]);
 
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    fetchStatuses();
+  }
+
+  useEffect(() => {
     if (pcs.length === 0) {
         fetchStatuses();
     } else {
@@ -44,7 +52,7 @@ export function AdminDashboard({ pcs, setPcs, addAuditLog }: AdminDashboardProps
     const intervalId = setInterval(fetchStatuses, 5000); 
 
     return () => clearInterval(intervalId);
-  }, [isOnline, isLoading, setPcs, pcs.length]);
+  }, [fetchStatuses, pcs.length]);
 
   if (isLoading) {
     return (
@@ -66,7 +74,13 @@ export function AdminDashboard({ pcs, setPcs, addAuditLog }: AdminDashboardProps
             </AlertDescription>
         </Alert>
       )}
-      <AdminPcTable pcs={pcs} setPcs={setPcs} addAuditLog={addAuditLog} />
+      <AdminPcTable 
+        pcs={pcs} 
+        setPcs={setPcs} 
+        addAuditLog={addAuditLog}
+        onRefresh={handleRefresh}
+        isRefreshing={isRefreshing}
+      />
     </>
   );
 }

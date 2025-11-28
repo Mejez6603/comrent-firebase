@@ -27,6 +27,7 @@ import {
     Loader,
     FileText,
     CreditCard,
+    RefreshCw,
   } from 'lucide-react';
 import type { FC } from 'react';
 import { useState } from 'react';
@@ -116,9 +117,11 @@ type AdminPcTableProps = {
     pcs: PC[], 
     setPcs: React.Dispatch<React.SetStateAction<PC[]>>,
     addAuditLog: (log: string) => void;
+    onRefresh: () => void;
+    isRefreshing: boolean;
 }
 
-export function AdminPcTable({ pcs, setPcs, addAuditLog }: AdminPcTableProps) {
+export function AdminPcTable({ pcs, setPcs, addAuditLog, onRefresh, isRefreshing }: AdminPcTableProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<PC | null>(null);
@@ -304,8 +307,12 @@ export function AdminPcTable({ pcs, setPcs, addAuditLog }: AdminPcTableProps) {
   return (
     <>
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>PC Status Overview</CardTitle>
+          <Button variant="outline" size="sm" onClick={onRefresh} disabled={isRefreshing}>
+              <RefreshCw className={cn('mr-2 h-4 w-4', isRefreshing && 'animate-spin')} />
+              Refresh
+          </Button>
         </CardHeader>
         <CardContent>
           <Table>
