@@ -41,21 +41,19 @@ export type SendGeneratedEmailInput = z.infer<typeof SendGeneratedEmailInputSche
 const emailGenerationPrompt = ai.definePrompt({
   name: 'generateInvoiceEmailPrompt',
   input: { schema: GenerateInvoiceEmailInputSchema },
-  output: { schema: GenerateInvoiceEmailOutputSchema },
+  output: { format: "json", schema: GenerateInvoiceEmailOutputSchema },
   prompt: `
-    You are an email generating service. Your task is to generate a professional invoice email.
+    You are an email generating assistant. Your task is to generate a professional and friendly invoice email.
+    The email body should be plain text, not HTML or markdown.
     
-    Generate a subject and a body for an invoice email based on the following details.
-    The email body should be plain text, not HTML.
-    
-    - Customer Name: {{{customerName}}}
-    - Rented PC: {{{pcName}}}
-    - Session Duration: {{{duration}}}
-    - Total Amount: {{{amount}}}
-    - Company Name: {{{companyName}}}
-    
-    The email should be friendly and clear.
-    DO NOT add any markdown like \`\`\`json to your output.
+    Generate a subject and a body for an invoice email based on the following details:
+    - Customer: {{{customerName}}}
+    - Service: PC Rental ({{{pcName}}})
+    - Duration: {{{duration}}}
+    - Amount Due: {{{amount}}}
+    - Company: {{{companyName}}}
+
+    The tone should be professional but friendly. Ensure the output is a valid JSON object matching the requested schema.
   `,
 });
 
