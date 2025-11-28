@@ -19,6 +19,7 @@ import { AuditLog } from './audit-log';
 import { PricingManagement } from './pricing-management';
 import { PC, PricingTier } from '@/lib/types';
 import type { Notification } from '@/components/admin/admin-notification-panel';
+import { AdminChat } from './admin-chat';
 
 export function AdminLayout({ children }: { children: React.ReactNode }) {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -180,6 +181,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
         {children}
         {renderContent()}
       </SidebarInset>
+      <AdminChat />
     </SidebarProvider>
   );
 }

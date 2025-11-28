@@ -31,6 +31,8 @@ import { Separator } from '@/components/ui/separator';
 import { PaymentHelpPopover } from '@/components/payment-help-popover';
 import { useAlarm } from '@/hooks/use-alarm';
 import { SessionEndedDialog } from '@/components/session-ended-dialog';
+import { ChatProvider } from '@/hooks/use-chat';
+import { ChatButton } from '@/components/chat-button';
 
 type PaymentStep = 'selection' | 'pending_approval' | 'in_session' | 'session_ended';
 
@@ -449,47 +451,58 @@ function PaymentForm() {
 
   return (
     <>
-    <SessionEndedDialog
-        isOpen={isSessionEndModalOpen}
-        onAcknowledge={handleAcknowledgeSessionEnd}
-    />
-    <Card className="w-full max-w-4xl shadow-2xl min-h-[620px]">
-      <CardHeader className="text-center">
-        <CardTitle className="text-3xl font-bold text-primary">
-            {step === 'in_session' ? 'Session Active' : 'Start Your Session'}
-        </CardTitle>
-        <CardDescription>
-          You are renting <span className="font-bold text-accent">{pcName}</span>
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6 px-8">
-        {pricingTiers.length > 0 && pc ? renderContent() : <div className="flex justify-center items-center h-48"><Loader className="h-8 w-8 animate-spin" /></div>}
-      </CardContent>
-      {(step === 'selection') && (
-        <CardFooter className="flex flex-col gap-4 px-8 pb-8 mt-4">
-            {step === 'selection' && !selectedPaymentMethod && <Separator className="my-4" />}
-            {step === 'selection' && 
-                <Button asChild variant="ghost" className="w-full" disabled={isProcessing}>
-                    <Link href="/">
-                        <ArrowLeft className="mr-2 h-4 w-4" />
-                        Cancel and Go Back
-                    </Link>
-                </Button>
-            }
-        </CardFooter>
-      )}
-    </Card>
+        <SessionEndedDialog
+            isOpen={isSessionEndModalOpen}
+            onAcknowledge={handleAcknowledgeSessionEnd}
+        />
+        <Card className="w-full max-w-4xl shadow-2xl min-h-[620px]">
+        <CardHeader className="text-center">
+            <CardTitle className="text-3xl font-bold text-primary">
+                {step === 'in_session' ? 'Session Active' : 'Start Your Session'}
+            </CardTitle>
+            <CardDescription>
+            You are renting <span className="font-bold text-accent">{pcName}</span>
+            </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6 px-8">
+            {pricingTiers.length > 0 && pc ? renderContent() : <div className="flex justify-center items-center h-48"><Loader className="h-8 w-8 animate-spin" /></div>}
+        </CardContent>
+        {(step === 'selection') && (
+            <CardFooter className="flex flex-col gap-4 px-8 pb-8 mt-4">
+                {step === 'selection' && !selectedPaymentMethod && <Separator className="my-4" />}
+                {step === 'selection' && 
+                    <Button asChild variant="ghost" className="w-full" disabled={isProcessing}>
+                        <Link href="/">
+                            <ArrowLeft className="mr-2 h-4 w-4" />
+                            Cancel and Go Back
+                        </Link>
+                    </Button>
+                }
+            </CardFooter>
+        )}
+        </Card>
     </>
   );
 }
 
 export default function PaymentPage() {
+  const searchParams = useSearchParams();
+  const pcName = searchParams.get('pc');
+
   return (
     <main className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-background to-secondary p-4">
       <Suspense fallback={<Card className="w-full max-w-lg h-[620px]"><CardContent><div className="animate-pulse rounded-md bg-muted h-full w-full"></div></CardContent></Card>}>
-        <PaymentForm />
+        {pcName && (
+            <ChatProvider pcName={pcName} role="user">
+                <PaymentForm />
+            </ChatProvider>
+        )}
+        {!pcName && <PaymentForm />}
       </Suspense>
-      <PaymentHelpPopover />
+      <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-4 items-end">
+        <ChatButton />
+        <PaymentHelpPopover />
+      </div>
     </main>
   );
 }

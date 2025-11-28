@@ -7,36 +7,31 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
-import { HelpCircle, Clock, Scan, Send, CheckCircle, ListOrdered, ArrowDown } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { HelpCircle, Clock, Scan, Send, CheckCircle, ListOrdered } from 'lucide-react';
 
 export function PaymentHelpPopover() {
   const [showHelpHint, setShowHelpHint] = useState(false);
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
   useEffect(() => {
-    // Only set the timer if the popover hasn't been opened yet
     if (!isPopoverOpen) {
       const timer = setTimeout(() => {
         setShowHelpHint(true);
-      }, 60000); // 1 minute
+      }, 60000); 
 
-      // Cleanup function to clear the timer if the component unmounts
-      // or if the user opens the popover before the minute is up
       return () => clearTimeout(timer);
     }
   }, [isPopoverOpen]);
 
   const handlePopoverOpenChange = (open: boolean) => {
     setIsPopoverOpen(open);
-    // If the user opens the popover, permanently hide the hint
     if (open) {
       setShowHelpHint(false);
     }
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-50">
+    <>
       {showHelpHint && !isPopoverOpen && (
         <div className="absolute bottom-20 right-0 flex animate-bounce items-center justify-center">
             <div className="relative rounded-full bg-primary px-4 py-2 text-primary-foreground shadow-lg">
@@ -98,6 +93,6 @@ export function PaymentHelpPopover() {
           </div>
         </PopoverContent>
       </Popover>
-    </div>
+    </>
   );
 }
