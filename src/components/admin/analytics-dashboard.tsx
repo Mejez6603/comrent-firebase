@@ -1,6 +1,6 @@
 'use client';
 import { useMemo } from 'react';
-import type { PC, PricingTier } from '@/lib/types';
+import type { PC, PricingTier, PaymentMethod } from '@/lib/types';
 import { BarChart, Users, DollarSign, Clock, BarChart2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -23,27 +23,43 @@ type AnalyticsDashboardProps = {
 
 export function AnalyticsDashboard({ pcs, pricingTiers }: AnalyticsDashboardProps) {
   const stats = useMemo(() => {
-    const totalRevenue = pcs
-        .filter(pc => pc.status === 'pending_payment' || pc.status === 'in_use')
-        .reduce((acc, pc) => {
-            const durationInfo = pricingTiers.find(d => d.value === String(pc.session_duration));
-            return acc + (durationInfo?.price || 0);
-        }, 0);
+    const activeAndFinishedPcs = pcs.filter(pc => (pc.status === 'in_use' || pc.status === 'pending_payment') && pc.session_duration);
+
+    const totalRevenue = activeAndFinishedPcs.reduce((acc, pc) => {
+        const durationInfo = pricingTiers.find(d => d.value === String(pc.session_duration));
+        return acc + (durationInfo?.price || 0);
+    }, 0);
 
     const activeUsers = pcs.filter(pc => pc.status === 'in_use').length;
-    const totalSessions = pcs.filter(pc => pc.status === 'in_use' || pc.status === 'pending_payment').length;
+    const totalSessions = activeAndFinishedPcs.length;
+
+    const totalMinutes = activeAndFinishedPcs.reduce((acc, pc) => acc + (pc.session_duration || 0), 0);
+    const averageSessionMinutes = totalSessions > 0 ? totalMinutes / totalSessions : 0;
+
 
     const statusCounts = pcs.reduce((acc, pc) => {
       acc[pc.status] = (acc[pc.status] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
 
-    const chartData = Object.entries(statusCounts).map(([name, value]) => ({
-      name: name.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()),
+    const statusChartData = Object.entries(statusCounts).map(([name, value]) => ({
+      name: name.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
       value,
     }));
 
-    return { totalRevenue, activeUsers, totalSessions, chartData };
+    const paymentMethodCounts = activeAndFinishedPcs.reduce((acc, pc) => {
+        if (pc.paymentMethod) {
+            acc[pc.paymentMethod] = (acc[pc.paymentMethod] || 0) + 1;
+        }
+        return acc;
+    }, {} as Record<PaymentMethod, number>);
+
+    const paymentMethodChartData = Object.entries(paymentMethodCounts).map(([name, value]) => ({
+        name,
+        value,
+    }));
+
+    return { totalRevenue, activeUsers, totalSessions, statusChartData, averageSessionMinutes, paymentMethodChartData };
   }, [pcs, pricingTiers]);
 
   return (
@@ -68,17 +84,27 @@ export function AnalyticsDashboard({ pcs, pricingTiers }: AnalyticsDashboardProp
           <p className="text-xs text-muted-foreground">Currently in session</p>
         </CardContent>
       </Card>
-       <Card className="col-span-1 md:col-span-2">
+      <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">PC Status Distribution</CardTitle>
-          <BarChart2 className="h-4 w-4 text-muted-foreground" />
+          <CardTitle className="text-sm font-medium">Avg. Session</CardTitle>
+          <Clock className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <ChartContainer config={{}} className="h-[120px] w-full">
+          <div className="text-2xl font-bold">{stats.averageSessionMinutes.toFixed(0)} min</div>
+          <p className="text-xs text-muted-foreground">Average rental duration</p>
+        </CardContent>
+      </Card>
+       <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">PC Status</CardTitle>
+          <BarChart2 className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent className="pb-2">
+          <ChartContainer config={{}} className="h-[80px] w-full">
             <RechartsBarChart
-              data={stats.chartData}
+              data={stats.statusChartData}
               layout="vertical"
-              margin={{ left: 10, right: 10, top: 10, bottom: 10 }}
+              margin={{ left: 10, right: 10, top: 0, bottom: 0 }}
             >
               <CartesianGrid horizontal={false} />
               <XAxis type="number" hide />
@@ -95,6 +121,40 @@ export function AnalyticsDashboard({ pcs, pricingTiers }: AnalyticsDashboardProp
                 content={<ChartTooltipContent hideLabel />}
               />
               <Bar dataKey="value" fill="hsl(var(--primary))" radius={4} />
+            </RechartsBarChart>
+          </ChartContainer>
+        </CardContent>
+      </Card>
+      <Card className="col-span-1 md:col-span-2 lg:col-span-4">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Payment Methods</CardTitle>
+          <BarChart className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <ChartContainer config={{}} className="h-[200px] w-full">
+            <RechartsBarChart
+              data={stats.paymentMethodChartData}
+              margin={{ left: 10, right: 10, top: 10, bottom: 10 }}
+            >
+              <CartesianGrid vertical={false} />
+              <XAxis
+                dataKey="name"
+                tickLine={false}
+                axisLine={false}
+                tickMargin={8}
+                tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+              />
+              <YAxis 
+                tickLine={false}
+                axisLine={false}
+                tickMargin={8}
+                tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+              />
+              <ChartTooltip
+                cursor={false}
+                content={<ChartTooltipContent hideLabel />}
+              />
+              <Bar dataKey="value" fill="hsl(var(--accent))" radius={8} />
             </RechartsBarChart>
           </ChartContainer>
         </CardContent>
