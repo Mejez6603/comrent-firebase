@@ -4,7 +4,8 @@ export type PCStatus =
   | 'pending_payment'
   | 'pending_approval'
   | 'maintenance'
-  | 'unavailable';
+  | 'unavailable'
+  | 'time_up';
 
 export type PaymentMethod = 'GCash' | 'Maya' | 'QR Code';
 

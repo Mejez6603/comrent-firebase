@@ -24,6 +24,7 @@ export type Notification = {
 export function AdminNotificationPanel({ pcs, previousPcs }: AdminNotificationPanelProps) {
   const notifications = useMemo(() => {
     const newNotifications: Notification[] = [];
+    const prevPcsMap = new Map(previousPcs.map(p => [p.id, p]));
 
     // 1. Users waiting for approval
     pcs
@@ -66,7 +67,6 @@ export function AdminNotificationPanel({ pcs, previousPcs }: AdminNotificationPa
       });
       
     // 3. PC is available now
-    const prevPcsMap = new Map(previousPcs.map(p => [p.id, p]));
     pcs.forEach((pc) => {
         const prevPc = prevPcsMap.get(pc.id);
         if (prevPc && prevPc.status !== 'available' && pc.status === 'available') {
@@ -84,9 +84,9 @@ export function AdminNotificationPanel({ pcs, previousPcs }: AdminNotificationPa
         }
     });
 
-    // 4. Session has ended (pending payment)
+    // 4. Session has ended (time_up)
     pcs
-        .filter((pc) => pc.status === 'pending_payment')
+        .filter((pc) => pc.status === 'time_up')
         .forEach((pc) => {
             const prevPc = prevPcsMap.get(pc.id);
             if (prevPc && prevPc.status === 'in_use') {
@@ -94,10 +94,10 @@ export function AdminNotificationPanel({ pcs, previousPcs }: AdminNotificationPa
                     id: `ended-${pc.id}`,
                     type: 'ended',
                     icon: Clock,
-                    iconClass: 'text-status-pending',
+                    iconClass: 'text-destructive',
                     message: (
                     <span>
-                        Session for <span className="font-bold">{pc.name}</span> has ended and is pending payment.
+                        Session for <span className="font-bold">{pc.name}</span> has ended. Awaiting payment.
                     </span>
                     ),
                 });

@@ -162,15 +162,15 @@ function PaymentForm() {
         clearInterval(timerId);
         setStep('session_ended');
         
-        // Update status to pending_payment
+        // Update status to time_up
         try {
             await fetch('/api/pc-status', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: pc.id, newStatus: 'pending_payment' })
+                body: JSON.stringify({ id: pc.id, newStatus: 'time_up' })
             });
         } catch (error) {
-            console.error("Failed to update status to pending_payment", error);
+            console.error("Failed to update status to time_up", error);
         }
 
         // Trigger alarm and modal
@@ -261,8 +261,8 @@ function PaymentForm() {
         if (!response.ok) {
             throw new Error('Failed to cancel session.');
         }
-
-        setStep('selection');
+        
+        router.push('/');
         toast({
             title: 'Session Cancelled',
             description: 'Your rental request has been cancelled.',
@@ -465,7 +465,7 @@ function PaymentForm() {
       <CardContent className="space-y-6 px-8">
         {pricingTiers.length > 0 && pc ? renderContent() : <div className="flex justify-center items-center h-48"><Loader className="h-8 w-8 animate-spin" /></div>}
       </CardContent>
-      {(step === 'selection' || step === 'pending_approval') && (
+      {(step === 'selection') && (
         <CardFooter className="flex flex-col gap-4 px-8 pb-8 mt-4">
             {step === 'selection' && !selectedPaymentMethod && <Separator className="my-4" />}
             {step === 'selection' && 

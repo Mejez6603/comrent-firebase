@@ -9,7 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Monitor, Power, Hourglass, Ban, Wifi, WifiOff, Wrench, CircleHelp } from 'lucide-react';
+import { Monitor, Power, Hourglass, Ban, Wifi, WifiOff, Wrench, CircleHelp, Clock } from 'lucide-react';
 import { WelcomeDialog } from './welcome-dialog';
 import { useState } from 'react';
 
@@ -33,6 +33,12 @@ const statusConfig: StatusConfig = {
     label: 'In Use',
     icon: Monitor,
     cardClass: 'bg-status-using text-status-text border-blue-400',
+    clickable: false,
+  },
+  time_up: {
+    label: 'Time\'s Up',
+    icon: Clock,
+    cardClass: 'bg-destructive text-destructive-foreground border-red-400',
     clickable: false,
   },
   pending_payment: {

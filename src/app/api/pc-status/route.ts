@@ -14,6 +14,7 @@ const statuses: PCStatus[] = [
   'pending_approval',
   'maintenance',
   'unavailable',
+  'time_up',
 ];
 
 // Initial realistic statuses
@@ -146,10 +147,13 @@ export async function PUT(request: Request) {
         pcs[pcIndex].paymentMethod = paymentMethod;
         pcs[pcIndex].session_start = undefined; // Clear start time until approved
       
+      } else if (newStatus === 'time_up') {
+        // This is triggered by the client when the session ends
+        // Keep user/email/payment info for reference
+        pcs[pcIndex].session_start = undefined;
+
       } else if (newStatus === 'pending_payment') {
-        // This is triggered by the client when the session ends OR when entering payment page
-        // Keep user/email/payment info for reference if coming from session end
-        // Clear if coming from 'available'
+        // This is triggered when reserving a PC or for manual payment collection
         const previousStatus = pcs[pcIndex].status;
         if(previousStatus === 'available' || !pcs[pcIndex].user) {
             pcs[pcIndex].user = undefined;

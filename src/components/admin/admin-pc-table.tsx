@@ -28,7 +28,8 @@ import {
     FileText,
     CreditCard,
     RefreshCw,
-    PlusCircle
+    PlusCircle,
+    Clock
   } from 'lucide-react';
 import type { FC } from 'react';
 import { useState } from 'react';
@@ -82,6 +83,11 @@ const statusConfig: StatusConfig = {
         label: 'In Use',
         icon: Monitor,
         badgeClass: 'bg-status-using text-status-text border-blue-400',
+    },
+    time_up: {
+        label: 'Time\'s Up',
+        icon: Clock,
+        badgeClass: 'bg-destructive text-destructive-foreground border-red-400',
     },
     pending_payment: {
         label: 'Pending Payment',
@@ -413,7 +419,7 @@ export function AdminPcTable({ pcs, setPcs, addAuditLog, onRefresh, isRefreshing
                     </TableCell>
                     <TableCell>{pc.user || '-'}</TableCell>
                     <TableCell>
-                        {pc.email && ['pending_payment', 'in_use', 'pending_approval'].includes(pc.status) ? (
+                        {pc.email && ['pending_payment', 'in_use', 'pending_approval', 'time_up'].includes(pc.status) ? (
                             <Button
                                 variant="link"
                                 className="p-0 h-auto text-primary underline"
