@@ -1,11 +1,10 @@
 'use client';
 
 import { useMemo } from 'react';
-import type { PC } from '@/lib/types';
+import type { PC, PCStatus } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Bell, CircleHelp, Clock, Power, Info } from 'lucide-react';
+import { Bell, CircleHelp, Clock, Power, Info, Wrench, Ban, Monitor } from 'lucide-react';
 import { ScrollArea } from '../ui/scroll-area';
-import { formatDistanceToNow } from 'date-fns';
 import { useNotificationSounds } from '@/hooks/use-notification-sounds';
 
 type AdminNotificationPanelProps = {
@@ -15,96 +14,83 @@ type AdminNotificationPanelProps = {
 
 export type Notification = {
   id: string;
-  type: 'approval' | 'time-up' | 'available' | 'ended';
+  type: PCStatus | 'ended' | 'session_ending';
   icon: React.ElementType;
   iconClass: string;
   message: React.ReactNode;
 };
+
+const iconMap: Record<PCStatus, { icon: React.ElementType; iconClass: string }> = {
+    available: { icon: Power, iconClass: 'text-green-500' },
+    in_use: { icon: Monitor, iconClass: 'text-blue-500' },
+    pending_payment: { icon: Clock, iconClass: 'text-orange-500' },
+    pending_approval: { icon: CircleHelp, iconClass: 'text-yellow-500' },
+    maintenance: { icon: Wrench, iconClass: 'text-gray-500' },
+    unavailable: { icon: Ban, iconClass: 'text-red-500' },
+    time_up: { icon: Clock, iconClass: 'text-destructive' },
+};
+
 
 export function AdminNotificationPanel({ pcs, previousPcs }: AdminNotificationPanelProps) {
   const notifications = useMemo(() => {
     const newNotifications: Notification[] = [];
     const prevPcsMap = new Map(previousPcs.map(p => [p.id, p]));
 
-    // 1. Users waiting for approval
-    pcs
-      .filter((pc) => pc.status === 'pending_approval')
-      .forEach((pc) => {
-        newNotifications.push({
-          id: `approval-${pc.id}`,
-          type: 'approval',
-          icon: CircleHelp,
-          iconClass: 'text-yellow-500',
-          message: (
-            <span>
-              <span className="font-bold">{pc.name}</span> is waiting for session approval.
-            </span>
-          ),
-        });
-      });
-
-    // 2. Users whose time is almost up
-    pcs
-      .filter((pc) => pc.status === 'in_use' && pc.session_start && pc.session_duration)
-      .forEach((pc) => {
-        const endTime = new Date(pc.session_start!).getTime() + pc.session_duration! * 60 * 1000;
-        const minutesRemaining = (endTime - Date.now()) / (1000 * 60);
-
-        if (minutesRemaining > 0 && minutesRemaining <= 5) {
-          newNotifications.push({
-            id: `time-up-${pc.id}`,
-            type: 'time-up',
-            icon: Clock,
-            iconClass: 'text-orange-500',
-            message: (
-              <span>
-                <span className="font-bold">{pc.name}</span> session will end{' '}
-                {formatDistanceToNow(endTime, { addSuffix: true })}.
-              </span>
-            ),
-          });
-        }
-      });
-      
-    // 3. PC is available now
     pcs.forEach((pc) => {
         const prevPc = prevPcsMap.get(pc.id);
-        if (prevPc && prevPc.status !== 'available' && pc.status === 'available') {
+
+        // 1. Detect any status change
+        if (prevPc && prevPc.status !== pc.status) {
+            const config = iconMap[pc.status];
             newNotifications.push({
-                id: `available-${pc.id}`,
-                type: 'available',
-                icon: Power,
-                iconClass: 'text-green-500',
+                id: `${pc.status}-${pc.id}-${Date.now()}`, // Make ID more unique
+                type: pc.status,
+                icon: config.icon,
+                iconClass: config.iconClass,
                 message: (
-                  <span>
-                    <span className="font-bold">{pc.name}</span> is now available.
-                  </span>
+                    <span>
+                        <span className="font-bold">{pc.name}</span> status changed to <span className="font-semibold">{pc.status.replace(/_/g, ' ')}</span>.
+                    </span>
+                ),
+            });
+        }
+
+        // 2. Add specific, more descriptive notifications for important states
+        // These can exist alongside the generic status change notification.
+        if (pc.status === 'pending_approval') {
+            newNotifications.push({
+                id: `approval-${pc.id}`,
+                type: 'pending_approval',
+                icon: CircleHelp,
+                iconClass: 'text-yellow-500',
+                message: (
+                    <span>
+                    <span className="font-bold">{pc.name}</span> is waiting for session approval.
+                    </span>
+                ),
+            });
+        }
+        
+        if (pc.status === 'time_up') {
+             newNotifications.push({
+                id: `ended-${pc.id}`,
+                type: 'ended',
+                icon: Clock,
+                iconClass: 'text-destructive',
+                message: (
+                <span>
+                    Session for <span className="font-bold">{pc.name}</span> has ended. Awaiting action.
+                </span>
                 ),
             });
         }
     });
 
-    // 4. Session has ended (time_up)
-    pcs
-        .filter((pc) => pc.status === 'time_up')
-        .forEach((pc) => {
-            const prevPc = prevPcsMap.get(pc.id);
-            if (prevPc && prevPc.status === 'in_use') {
-                newNotifications.push({
-                    id: `ended-${pc.id}`,
-                    type: 'ended',
-                    icon: Clock,
-                    iconClass: 'text-destructive',
-                    message: (
-                    <span>
-                        Session for <span className="font-bold">{pc.name}</span> has ended. Awaiting payment.
-                    </span>
-                    ),
-                });
-            }
-    });
+    // Remove duplicates that might arise from the logic above, favoring the specific message.
+    const finalNotifications = Array.from(new Map(newNotifications.map(n => [n.id.split('-').slice(0, 2).join('-'), n])).values());
 
-    return newNotifications;
+
+    return finalNotifications;
   }, [pcs, previousPcs]);
 
   useNotificationSounds(notifications);

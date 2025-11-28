@@ -3,13 +3,14 @@
 
 import { useEffect, useRef } from 'react';
 import type { Notification } from '@/components/admin/admin-notification-panel';
+import { PCStatus } from '@/lib/types';
 
-type SoundType = 'approval' | 'time-up' | 'available' | 'ended';
+type SoundType = PCStatus | 'ended' | 'session_ending';
 
 // Store AudioContext in a way that persists across re-renders
 let audioContext: AudioContext | null = null;
 const getAudioContext = () => {
-    if (typeof window !== 'undefined' && !audioContext) {
+    if (typeof window !== 'undefined' && (!audioContext || audioContext.state === 'closed')) {
         audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
     }
     return audioContext;
@@ -34,11 +35,12 @@ const playSound = (type: SoundType) => {
     gainNode.gain.linearRampToValueAtTime(0.4, ctx.currentTime + 0.05);
 
     switch (type) {
-        case 'approval': // High-pitched, urgent
+        case 'pending_approval': // High-pitched, urgent
             oscillator.type = 'sine';
             oscillator.frequency.setValueAtTime(880, ctx.currentTime); // A5
             break;
-        case 'time-up': // Mid-range, repeated
+        case 'time_up': // Mid-range, repeated
+        case 'ended':
             oscillator.type = 'sawtooth';
             oscillator.frequency.setValueAtTime(440, ctx.currentTime); // A4
             break;
@@ -46,8 +48,17 @@ const playSound = (type: SoundType) => {
             oscillator.type = 'triangle';
             oscillator.frequency.setValueAtTime(659.25, ctx.currentTime); // E5
             break;
-        case 'ended': // Lower, more distinct
+        case 'in_use':
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(523.25, ctx.currentTime); // C5
+            break;
+        case 'pending_payment':
             oscillator.type = 'square';
+            oscillator.frequency.setValueAtTime(392, ctx.currentTime); // G4
+            break;
+        case 'maintenance':
+        case 'unavailable':
+             oscillator.type = 'square';
             oscillator.frequency.setValueAtTime(330, ctx.currentTime); // E4
             break;
         default:
