@@ -2,10 +2,11 @@ import { NextResponse } from 'next/server';
 import type { PricingTier } from '@/lib/types';
 
 let pricingTiers: PricingTier[] = [
-    { value: '30', label: '30 minutes', price: 30 },
-    { value: '60', label: '1 hour', price: 50 },
-    { value: '120', label: '2 hours', price: 90 },
-    { value: '180', label: '3 hours', price: 120 },
+    { value: '10', label: '10 minutes', price: 5 },
+    { value: '30', label: '30 minutes', price: 10 },
+    { value: '60', label: '1 hour', price: 15 },
+    { value: '120', label: '2 hours', price: 25 },
+    { value: '180', label: '3 hours', price: 40 },
 ];
 
 // GET all pricing tiers
