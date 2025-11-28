@@ -6,6 +6,8 @@ export type PCStatus =
   | 'maintenance'
   | 'unavailable';
 
+export type PaymentMethod = 'GCash' | 'Maya' | 'QR Code';
+
 export interface PC {
   id: string;
   name: string;
@@ -14,4 +16,5 @@ export interface PC {
   email?: string;
   session_start?: string;
   session_duration?: number;
+  paymentMethod?: PaymentMethod;
 }

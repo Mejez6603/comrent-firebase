@@ -1,5 +1,5 @@
 'use client';
-import type { PC, PCStatus } from '@/lib/types';
+import type { PC, PCStatus, PaymentMethod } from '@/lib/types';
 import {
   Table,
   TableBody,
@@ -26,6 +26,7 @@ import {
     Send,
     Loader,
     FileText,
+    CreditCard,
   } from 'lucide-react';
 import type { FC } from 'react';
 import { useState } from 'react';
@@ -274,6 +275,32 @@ export function AdminPcTable({ pcs, setPcs, addAuditLog }: AdminPcTableProps) {
     }
   };
 
+  const PaymentMethodBadge: React.FC<{ method: PaymentMethod | undefined }> = ({ method }) => {
+    if (!method) return <span className="text-muted-foreground">-</span>;
+  
+    let badgeClass = '';
+    switch (method) {
+      case 'GCash':
+        badgeClass = 'bg-blue-500 hover:bg-blue-500';
+        break;
+      case 'Maya':
+        badgeClass = 'bg-green-800 hover:bg-green-800';
+        break;
+      case 'QR Code':
+        badgeClass = 'bg-red-600 hover:bg-red-600';
+        break;
+      default:
+        badgeClass = 'bg-gray-500 hover:bg-gray-500';
+    }
+  
+    return (
+      <Badge className={cn('text-white', badgeClass)}>
+        <CreditCard className="mr-1 h-3 w-3" />
+        {method}
+      </Badge>
+    );
+  };
+
   return (
     <>
       <Card>
@@ -288,6 +315,7 @@ export function AdminPcTable({ pcs, setPcs, addAuditLog }: AdminPcTableProps) {
                 <TableHead>Status</TableHead>
                 <TableHead>User</TableHead>
                 <TableHead>Email</TableHead>
+                <TableHead>Payment Method</TableHead>
                 <TableHead>Time Remaining</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -347,7 +375,7 @@ export function AdminPcTable({ pcs, setPcs, addAuditLog }: AdminPcTableProps) {
                         {pc.email && ['pending_payment', 'in_use', 'pending_approval'].includes(pc.status) ? (
                             <Button
                                 variant="link"
-                                className="p-0 h-auto underline"
+                                className="p-0 h-auto text-primary underline"
                                 onClick={() => handleOpenInvoiceDialog(pc)}
                             >
                                 {pc.email}
@@ -355,6 +383,9 @@ export function AdminPcTable({ pcs, setPcs, addAuditLog }: AdminPcTableProps) {
                         ) : (
                             pc.email || '-'
                         )}
+                    </TableCell>
+                    <TableCell>
+                        <PaymentMethodBadge method={pc.paymentMethod} />
                     </TableCell>
                     <TableCell>{timeRemaining}</TableCell>
                     <TableCell className="text-right">

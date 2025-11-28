@@ -24,12 +24,11 @@ import {
 import { ArrowLeft, Clock, Mail, User, CheckCircle, Loader, Send, Hourglass, PlusCircle, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
-import { PC } from '@/lib/types';
+import { PC, PaymentMethod } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { add, formatDistanceToNowStrict } from 'date-fns';
 import { Separator } from '@/components/ui/separator';
 
-type PaymentMethod = 'GCash' | 'Maya' | 'QR Code';
 type PaymentStep = 'selection' | 'pending_approval' | 'in_session' | 'session_ended';
 
 const durationOptions = [
@@ -184,6 +183,7 @@ function PaymentForm() {
                 duration: parseInt(selectedDuration.value),
                 user: name,
                 email: email,
+                paymentMethod: selectedPaymentMethod,
             })
         });
 
@@ -398,5 +398,3 @@ export default function PaymentPage() {
     </main>
   );
 }
-
-    

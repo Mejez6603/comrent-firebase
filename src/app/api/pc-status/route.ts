@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import type { PC, PCStatus } from '@/lib/types';
+import type { PC, PCStatus, PaymentMethod } from '@/lib/types';
 
 let pcs: PC[] = Array.from({ length: 12 }, (_, i) => ({
   id: `${i + 1}`,
@@ -21,8 +21,12 @@ pcs[1].status = 'in_use';
 pcs[1].user = 'user_a';
 pcs[1].session_start = new Date(Date.now() - 30 * 60 * 1000).toISOString();
 pcs[1].session_duration = 60;
+pcs[1].paymentMethod = 'GCash';
+
 
 pcs[3].status = 'pending_payment';
+pcs[3].paymentMethod = 'Maya';
+pcs[3].user = 'user_c';
 
 pcs[5].status = 'maintenance';
 
@@ -30,6 +34,8 @@ pcs[7].status = 'in_use';
 pcs[7].user = 'user_b';
 pcs[7].session_start = new Date(Date.now() - 15 * 60 * 1000).toISOString();
 pcs[7].session_duration = 30;
+pcs[7].paymentMethod = 'QR Code';
+
 
 pcs[10].status = 'unavailable';
 
@@ -40,7 +46,7 @@ function updateStatuses() {
     if (pc.status === 'in_use' && pc.session_start && pc.session_duration) {
       const endTime = new Date(pc.session_start).getTime() + pc.session_duration * 60 * 1000;
       if (Date.now() > endTime) {
-        return { ...pc, status: 'pending_payment', user: undefined, session_start: undefined, session_duration: undefined };
+        return { ...pc, status: 'pending_payment', session_start: undefined, session_duration: undefined };
       }
     }
     
@@ -53,6 +59,7 @@ function updateStatuses() {
           user: `user_${Math.random().toString(36).substring(7)}`,
           session_start: new Date().toISOString(),
           session_duration: [30, 60, 120][Math.floor(Math.random() * 3)],
+          paymentMethod: ['GCash', 'Maya', 'QR Code'][Math.floor(Math.random() * 3)] as PaymentMethod
       };
     }
 
@@ -103,7 +110,7 @@ export async function POST(request: Request) {
 
 export async function PUT(request: Request) {
     try {
-      const { id, newStatus, duration, user, email } = await request.json();
+      const { id, newStatus, duration, user, email, paymentMethod } = await request.json();
   
       if (!id || !newStatus) {
         return NextResponse.json({ message: 'Missing id or newStatus' }, { status: 400 });
@@ -133,13 +140,15 @@ export async function PUT(request: Request) {
         pcs[pcIndex].user = user;
         pcs[pcIndex].email = email;
         pcs[pcIndex].session_duration = duration;
+        pcs[pcIndex].paymentMethod = paymentMethod;
         pcs[pcIndex].session_start = undefined; // Clear start time until approved
       
-      } else if (['available', 'maintenance', 'unavailable', 'pending_payment'].includes(newStatus)) {
+      } else if (['available', 'maintenance', 'unavailable'].includes(newStatus)) {
         pcs[pcIndex].user = undefined;
         pcs[pcIndex].session_start = undefined;
         pcs[pcIndex].session_duration = undefined;
         pcs[pcIndex].email = undefined;
+        pcs[pcIndex].paymentMethod = undefined;
       }
   
       return NextResponse.json(pcs[pcIndex]);
