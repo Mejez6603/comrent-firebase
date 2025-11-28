@@ -94,7 +94,7 @@ function PaymentForm() {
             const currentPc = allPcs.find(p => p.name === pcName);
             
             if (currentPc) {
-                if (currentPc.status !== 'available') {
+                if (currentPc.status !== 'available' && currentPc.status !== 'pending_payment') {
                     toast({ variant: "destructive", title: "PC Not Available", description: `${pcName} is currently not available for rent.` });
                     router.push('/');
                     return;
@@ -485,24 +485,31 @@ function PaymentForm() {
   );
 }
 
-export default function PaymentPage() {
-  const searchParams = useSearchParams();
-  const pcName = searchParams.get('pc');
+function PaymentPageContent() {
+    const searchParams = useSearchParams();
+    const pcName = searchParams.get('pc');
 
+    if (!pcName) {
+        return <PaymentForm />;
+    }
+
+    return (
+        <ChatProvider pcName={pcName} role="user">
+            <PaymentForm />
+            <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-4 items-end">
+                <ChatButton />
+                <PaymentHelpPopover />
+            </div>
+        </ChatProvider>
+    );
+}
+
+export default function PaymentPage() {
   return (
     <main className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-background to-secondary p-4">
       <Suspense fallback={<Card className="w-full max-w-lg h-[620px]"><CardContent><div className="animate-pulse rounded-md bg-muted h-full w-full"></div></CardContent></Card>}>
-        {pcName && (
-            <ChatProvider pcName={pcName} role="user">
-                <PaymentForm />
-            </ChatProvider>
-        )}
-        {!pcName && <PaymentForm />}
+        <PaymentPageContent />
       </Suspense>
-      <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-4 items-end">
-        <ChatButton />
-        <PaymentHelpPopover />
-      </div>
     </main>
   );
 }
