@@ -336,9 +336,6 @@ function PaymentForm() {
                         <Button size="lg" onClick={handleExtend}>
                             <PlusCircle className="mr-2"/> Extend Time
                         </Button>
-                        <Button size="lg" asChild variant="secondary">
-                           <Link href="/">Back to Dashboard</Link>
-                        </Button>
                     </div>
                 </div>
             )
