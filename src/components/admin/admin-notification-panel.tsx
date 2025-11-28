@@ -6,14 +6,16 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Bell, CircleHelp, Clock, Power, Info } from 'lucide-react';
 import { ScrollArea } from '../ui/scroll-area';
 import { formatDistanceToNow } from 'date-fns';
+import { useNotificationSounds } from '@/hooks/use-notification-sounds';
 
 type AdminNotificationPanelProps = {
   pcs: PC[];
   previousPcs: PC[];
 };
 
-type Notification = {
+export type Notification = {
   id: string;
+  type: 'approval' | 'time-up' | 'available' | 'ended';
   icon: React.ElementType;
   iconClass: string;
   message: React.ReactNode;
@@ -29,6 +31,7 @@ export function AdminNotificationPanel({ pcs, previousPcs }: AdminNotificationPa
       .forEach((pc) => {
         newNotifications.push({
           id: `approval-${pc.id}`,
+          type: 'approval',
           icon: CircleHelp,
           iconClass: 'text-yellow-500',
           message: (
@@ -49,6 +52,7 @@ export function AdminNotificationPanel({ pcs, previousPcs }: AdminNotificationPa
         if (minutesRemaining > 0 && minutesRemaining <= 5) {
           newNotifications.push({
             id: `time-up-${pc.id}`,
+            type: 'time-up',
             icon: Clock,
             iconClass: 'text-orange-500',
             message: (
@@ -68,6 +72,7 @@ export function AdminNotificationPanel({ pcs, previousPcs }: AdminNotificationPa
         if (prevPc && prevPc.status !== 'available' && pc.status === 'available') {
             newNotifications.push({
                 id: `available-${pc.id}`,
+                type: 'available',
                 icon: Power,
                 iconClass: 'text-green-500',
                 message: (
@@ -87,6 +92,7 @@ export function AdminNotificationPanel({ pcs, previousPcs }: AdminNotificationPa
             if (prevPc && prevPc.status === 'in_use') {
                 newNotifications.push({
                     id: `ended-${pc.id}`,
+                    type: 'ended',
                     icon: Clock,
                     iconClass: 'text-status-pending',
                     message: (
@@ -100,6 +106,8 @@ export function AdminNotificationPanel({ pcs, previousPcs }: AdminNotificationPa
 
     return newNotifications;
   }, [pcs, previousPcs]);
+
+  useNotificationSounds(notifications);
 
   return (
     <Card>
