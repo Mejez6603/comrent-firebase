@@ -65,7 +65,8 @@ const generateInvoiceEmailFlow = ai.defineFlow(
     outputSchema: GenerateInvoiceEmailOutputSchema,
   },
   async (input) => {
-    const { output } = await emailGenerationPrompt(input);
+    const response = await emailGenerationPrompt(input);
+    const output = response.output;
     if (!output) {
       throw new Error('Failed to generate email content.');
     }
