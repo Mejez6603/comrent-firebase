@@ -29,6 +29,8 @@ import { cn } from '@/lib/utils';
 import { add } from 'date-fns';
 import { Separator } from '@/components/ui/separator';
 import { PaymentHelpPopover } from '@/components/payment-help-popover';
+import { useAlarm } from '@/hooks/use-alarm';
+import { SessionEndedDialog } from '@/components/session-ended-dialog';
 
 type PaymentStep = 'selection' | 'pending_approval' | 'in_session' | 'session_ended';
 
@@ -56,6 +58,10 @@ function PaymentForm() {
   const [sessionEndTime, setSessionEndTime] = useState<Date | null>(null);
   const [timeRemaining, setTimeRemaining] = useState('');
   const [notified, setNotified] = useState<Record<number, boolean>>({});
+
+  const [isSessionEndModalOpen, setIsSessionEndModalOpen] = useState(false);
+  const { startAlarm, stopAlarm } = useAlarm();
+
 
   const selectedDuration = useMemo(
     () => pricingTiers.find(opt => opt.value === duration),
@@ -167,14 +173,9 @@ function PaymentForm() {
             console.error("Failed to update status to pending_payment", error);
         }
 
-        toast({
-          title: "Session Ended",
-          description: "Your time is up. Please settle your payment with the admin.",
-          duration: 20000,
-          action: (
-            <Button onClick={handleExtend}><PlusCircle className="mr-2"/>Extend</Button>
-          )
-        });
+        // Trigger alarm and modal
+        startAlarm();
+        setIsSessionEndModalOpen(true);
         return;
       }
       
@@ -204,7 +205,7 @@ function PaymentForm() {
     }, 1000);
 
     return () => clearInterval(timerId);
-  }, [step, sessionEndTime, toast, notified, pc]);
+  }, [step, sessionEndTime, toast, notified, pc, startAlarm]);
 
 
   const handlePaymentMethodSelect = (method: PaymentMethod) => {
@@ -261,7 +262,7 @@ function PaymentForm() {
             throw new Error('Failed to cancel session.');
         }
 
-        router.push('/');
+        setStep('selection');
         toast({
             title: 'Session Cancelled',
             description: 'Your rental request has been cancelled.',
@@ -280,6 +281,11 @@ function PaymentForm() {
 
   const handleExtend = () => {
     toast({ title: "Extend Session", description: "This feature is coming soon!"})
+  }
+
+  const handleAcknowledgeSessionEnd = () => {
+    stopAlarm();
+    setIsSessionEndModalOpen(false);
   }
 
   if (!pcName) {
@@ -442,6 +448,11 @@ function PaymentForm() {
 
 
   return (
+    <>
+    <SessionEndedDialog
+        isOpen={isSessionEndModalOpen}
+        onAcknowledge={handleAcknowledgeSessionEnd}
+    />
     <Card className="w-full max-w-4xl shadow-2xl min-h-[620px]">
       <CardHeader className="text-center">
         <CardTitle className="text-3xl font-bold text-primary">
@@ -458,16 +469,17 @@ function PaymentForm() {
         <CardFooter className="flex flex-col gap-4 px-8 pb-8 mt-4">
             {step === 'selection' && !selectedPaymentMethod && <Separator className="my-4" />}
             {step === 'selection' && 
-                <Button asChild variant="ghost" className="w-full" disabled={isProcessing} onClick={handleCancelApproval}>
-                    <span>
+                <Button asChild variant="ghost" className="w-full" disabled={isProcessing}>
+                    <Link href="/">
                         <ArrowLeft className="mr-2 h-4 w-4" />
                         Cancel and Go Back
-                    </span>
+                    </Link>
                 </Button>
             }
         </CardFooter>
       )}
     </Card>
+    </>
   );
 }
 
