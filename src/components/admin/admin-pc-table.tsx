@@ -363,6 +363,7 @@ export function AdminPcTable({ pcs, setPcs, addAuditLog, onRefresh, isRefreshing
                 <TableHead>User</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Payment Method</TableHead>
+                <TableHead>Amount</TableHead>
                 <TableHead>Time Remaining</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -378,6 +379,9 @@ export function AdminPcTable({ pcs, setPcs, addAuditLog, onRefresh, isRefreshing
                   const endTime = new Date(pc.session_start).getTime() + pc.session_duration * 60 * 1000;
                   timeRemaining = formatDistanceToNow(endTime, { addSuffix: true });
                 }
+
+                const durationInfo = pricingTiers.find(d => d.value === String(pc.session_duration));
+                const amount = durationInfo ? `₱${durationInfo.price.toFixed(2)}` : '-';
 
                 return (
                   <TableRow key={pc.id}>
@@ -434,6 +438,7 @@ export function AdminPcTable({ pcs, setPcs, addAuditLog, onRefresh, isRefreshing
                     <TableCell>
                         <PaymentMethodBadge method={pc.paymentMethod} />
                     </TableCell>
+                    <TableCell className="font-semibold">{amount}</TableCell>
                     <TableCell>{timeRemaining}</TableCell>
                     <TableCell className="text-right">
                         <div className="flex gap-1 justify-end">
