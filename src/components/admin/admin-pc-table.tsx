@@ -216,7 +216,7 @@ export function AdminPcTable({ pcs, setPcs, addAuditLog, onRefresh, isRefreshing
         
         setPcs(prevPcs => prevPcs.map(p => (p.id === updatedPc.id ? updatedPc : p)));
         
-        addAuditLog(`Changed status of "${updatedPc.name}" from "${pcToUpdate.status}" to "${newStatus}".`);
+        addAuditLog(`Changed status of "${updatedPc.name}" from "${pcToUpdate.status.replace(/_/g, ' ')}" to "${newStatus.replace(/_/g, ' ')}".`);
         toast({ title: 'Status Updated', description: `PC "${updatedPc.name}" is now ${statusConfig[newStatus].label}.` });
       } catch (error) {
         console.error(error);
@@ -409,7 +409,7 @@ export function AdminPcTable({ pcs, setPcs, addAuditLog, onRefresh, isRefreshing
                                 const statusConf = statusConfig[status];
                                 const StatusIcon = statusConf.icon;
                                 const isPendingApproval = pc.status === 'pending_approval';
-                                const isDisabled = pc.status === status || (isPendingApproval && status !== 'in_use');
+                                const isDisabled = pc.status === status || (isPendingApproval && status !== 'in_use' && status !== 'available');
 
                                 return (
                                     <DropdownMenuItem key={status} onClick={() => handleStatusChange(pc.id, status)} disabled={isDisabled}>

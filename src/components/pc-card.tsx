@@ -45,13 +45,13 @@ const statusConfig: StatusConfig = {
     label: 'Pending Payment',
     icon: Hourglass,
     cardClass: 'bg-status-pending text-status-text border-orange-400',
-    clickable: false,
+    clickable: true, // Allow user to click to resume payment
   },
   pending_approval: {
     label: 'Pending Approval',
     icon: CircleHelp,
     cardClass: 'bg-yellow-500 text-status-text border-yellow-400',
-    clickable: false,
+    clickable: true, // Allow user to click to view status
   },
   maintenance: {
     label: 'Maintenance',

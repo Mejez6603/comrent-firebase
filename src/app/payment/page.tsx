@@ -31,7 +31,7 @@ import { Separator } from '@/components/ui/separator';
 import { PaymentHelpPopover } from '@/components/payment-help-popover';
 import { useAlarm } from '@/hooks/use-alarm';
 import { SessionEndedDialog } from '@/components/session-ended-dialog';
-import { ChatProvider } from '@/hooks/use-chat';
+import { ChatProvider, useChat } from '@/hooks/use-chat';
 import { ChatButton } from '@/components/chat-button';
 
 type PaymentStep = 'selection' | 'pending_approval' | 'in_session' | 'session_ended';
@@ -43,12 +43,10 @@ const paymentMethodColors: Record<PaymentMethod, string> = {
 };
 
 function PaymentForm() {
-  const searchParams = useSearchParams();
-  const pcName = searchParams.get('pc');
   const router = useRouter();
   const { toast } = useToast();
+  const { pc, setPc, pcName } = useChat();
 
-  const [pc, setPc] = useState<PC | null>(null);
   const [duration, setDuration] = useState('');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -80,46 +78,15 @@ function PaymentForm() {
             if (!pricingRes.ok) throw new Error('Failed to fetch pricing');
             const pricingData: PricingTier[] = await pricingRes.json();
             
-            // Sort pricing tiers from lowest to highest duration
             const sortedPricingData = pricingData.sort((a, b) => Number(a.value) - Number(b.value));
 
             setPricingTiers(sortedPricingData);
             if (sortedPricingData.length > 0) {
                 setDuration(sortedPricingData[0].value);
             }
-
-            // Fetch PC data
-            const res = await fetch('/api/pc-status');
-            const allPcs: PC[] = await res.json();
-            const currentPc = allPcs.find(p => p.name === pcName);
-            
-            if (currentPc) {
-                if (currentPc.status !== 'available' && currentPc.status !== 'pending_payment') {
-                    toast({ variant: "destructive", title: "PC Not Available", description: `${pcName} is currently not available for rent.` });
-                    router.push('/');
-                    return;
-                }
-                
-                // Immediately mark the PC as pending to reserve it
-                const updateRes = await fetch('/api/pc-status', {
-                  method: 'PUT',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ id: currentPc.id, newStatus: 'pending_payment' })
-                });
-
-                if (!updateRes.ok) {
-                  throw new Error('Failed to reserve PC');
-                }
-
-                const updatedPc = await updateRes.json();
-                setPc(updatedPc);
-            } else {
-                toast({ variant: "destructive", title: "Error", description: "PC not found." });
-                router.push('/');
-            }
         } catch (error) {
-            console.error("Failed to fetch initial data", error)
-            toast({ variant: "destructive", title: "Error", description: "Could not fetch page data." });
+            console.error("Failed to fetch pricing", error)
+            toast({ variant: "destructive", title: "Error", description: "Could not fetch pricing data." });
             router.push('/');
         }
     }
@@ -127,29 +94,26 @@ function PaymentForm() {
   }, [pcName, router, toast]);
 
   useEffect(() => {
-    if (!pc || step !== 'pending_approval') return;
+    if (!pc) return;
 
-    // Poll for status changes
-    const intervalId = setInterval(async () => {
-      try {
-        const response = await fetch(`/api/pc-status?id=${pc.id}`);
-        const updatedPc: PC = await response.json();
-        setPc(updatedPc);
+    if (pc.status === 'in_use' && step !== 'in_session' && pc.session_start && pc.session_duration) {
+      setStep('in_session');
+      const startTime = new Date(pc.session_start);
+      const endTime = add(startTime, { minutes: pc.session_duration });
+      setSessionEndTime(endTime);
+    } else if (pc.status === 'time_up' && step !== 'session_ended') {
+      setStep('session_ended');
+      setTimeRemaining('00:00:00');
+      startAlarm();
+      setIsSessionEndModalOpen(true);
+    } else if (pc.status === 'pending_approval' && step !== 'pending_approval') {
+        setStep('pending_approval');
+    } else if (pc.status === 'available' && (step === 'pending_approval' || step === 'session_ended')) {
+        router.push('/');
+    }
 
-        if (updatedPc.status === 'in_use' && updatedPc.session_start && updatedPc.session_duration) {
-            setStep('in_session');
-            const startTime = new Date(updatedPc.session_start);
-            const endTime = add(startTime, { minutes: updatedPc.session_duration });
-            setSessionEndTime(endTime);
-            clearInterval(intervalId);
-        }
-      } catch (error) {
-        console.error('Failed to poll PC status:', error);
-      }
-    }, 3000);
+  }, [pc, step, startAlarm, router]);
 
-    return () => clearInterval(intervalId);
-  }, [step, pc]);
 
   useEffect(() => {
     if (step !== 'in_session' || !sessionEndTime || !pc) return;
@@ -162,9 +126,8 @@ function PaymentForm() {
       if (totalSeconds <= 0) {
         setTimeRemaining('00:00:00');
         clearInterval(timerId);
-        setStep('session_ended');
         
-        // Update status to time_up
+        // Let the polling handle the status change to session_ended
         try {
             await fetch('/api/pc-status', {
                 method: 'PUT',
@@ -174,10 +137,6 @@ function PaymentForm() {
         } catch (error) {
             console.error("Failed to update status to time_up", error);
         }
-
-        // Trigger alarm and modal
-        startAlarm();
-        setIsSessionEndModalOpen(true);
         return;
       }
       
@@ -188,7 +147,6 @@ function PaymentForm() {
       const formattedTime = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
       setTimeRemaining(formattedTime);
       
-      // Time-based notifications
       const remainingMinutes = Math.ceil(totalSeconds / 60);
       
       if (remainingMinutes <= 10 && !notified[10]) {
@@ -207,7 +165,7 @@ function PaymentForm() {
     }, 1000);
 
     return () => clearInterval(timerId);
-  }, [step, sessionEndTime, toast, notified, pc, startAlarm]);
+  }, [step, sessionEndTime, toast, notified, pc]);
 
 
   const handlePaymentMethodSelect = (method: PaymentMethod) => {
@@ -234,6 +192,8 @@ function PaymentForm() {
 
         if (!response.ok) throw new Error('Failed to send payment notification');
         
+        const updatedPc = await response.json();
+        setPc(updatedPc);
         setStep('pending_approval');
         toast({
             title: 'Payment Sent!',
@@ -486,15 +446,8 @@ function PaymentForm() {
 }
 
 function PaymentPageContent() {
-    const searchParams = useSearchParams();
-    const pcName = searchParams.get('pc');
-
-    if (!pcName) {
-        return <PaymentForm />;
-    }
-
     return (
-        <ChatProvider pcName={pcName} role="user">
+        <ChatProvider>
             <PaymentForm />
             <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-4 items-end">
                 <ChatButton />

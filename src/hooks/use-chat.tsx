@@ -1,6 +1,10 @@
 'use client';
-import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode, Dispatch, SetStateAction } from 'react';
+import { useSearchParams } from 'next/navigation';
 import type { Message } from '@/app/api/messages/route';
+import { PC } from '@/lib/types';
+import { useToast } from './use-toast';
+import { useRouter } from 'next/navigation';
 
 interface ChatContextType {
   conversations: Record<string, Message[]>;
@@ -8,6 +12,9 @@ interface ChatContextType {
   setActiveConversation: (pcName: string | null) => void;
   sendMessage: (text: string) => void;
   unreadCounts: Record<string, number>;
+  pc: PC | null;
+  setPc: Dispatch<SetStateAction<PC | null>>;
+  pcName: string | null;
 }
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
@@ -22,42 +29,105 @@ export function useChat() {
 
 type ChatProviderProps = {
     children: ReactNode;
-    role: 'user' | 'admin';
-    pcName?: string; // For user role
 };
 
-export function ChatProvider({ children, role, pcName }: ChatProviderProps) {
+export function ChatProvider({ children }: ChatProviderProps) {
+  const searchParams = useSearchParams();
+  const pcNameFromUrl = searchParams.get('pc');
+  const { toast } = useToast();
+  const router = useRouter();
+
+  const [pc, setPc] = useState<PC | null>(null);
   const [conversations, setConversations] = useState<Record<string, Message[]>>({});
-  const [activeConversation, setActiveConversationState] = useState<string | null>(pcName || null);
+  const [activeConversation, setActiveConversationState] = useState<string | null>(pcNameFromUrl || null);
   const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
+  const role = activeConversation ? 'user' : 'admin';
 
-  const fetchMessages = useCallback(async () => {
-    try {
-      const allPcsResponse = await fetch('/api/pc-status');
-      const allPcs = await allPcsResponse.json();
-      const newConversations: Record<string, Message[]> = {};
-      const newUnreadCounts: Record<string, number> = {};
+  // For user-side, fetch the specific PC data and reserve it
+  useEffect(() => {
+    if (role !== 'user' || !activeConversation || pc) return;
 
-      for (const pc of allPcs) {
-        const response = await fetch(`/api/messages?pcName=${pc.name}`);
-        const messages: Message[] = await response.json();
-        if (messages.length > 0) {
-            newConversations[pc.name] = messages;
-            newUnreadCounts[pc.name] = messages.filter(m => !m.isRead && m.sender !== role).length;
+    async function fetchAndReservePc() {
+        try {
+            const res = await fetch(`/api/pc-status`);
+            const allPcs: PC[] = await res.json();
+            const currentPc = allPcs.find(p => p.name === activeConversation);
+
+            if (currentPc) {
+                if (currentPc.status !== 'available' && currentPc.status !== 'pending_payment' && currentPc.status !== 'pending_approval' && currentPc.status !== 'in_use') {
+                    toast({ variant: "destructive", title: "PC Not Available", description: `${activeConversation} is currently not available for rent.` });
+                    router.push('/');
+                    return;
+                }
+                
+                let pcToSet = currentPc;
+
+                if (currentPc.status === 'available') {
+                    const updateRes = await fetch('/api/pc-status', {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id: currentPc.id, newStatus: 'pending_payment' })
+                    });
+                    if (!updateRes.ok) throw new Error('Failed to reserve PC');
+                    pcToSet = await updateRes.json();
+                }
+                setPc(pcToSet);
+
+            } else {
+                toast({ variant: "destructive", title: "Error", description: "PC not found." });
+                router.push('/');
+            }
+        } catch (error) {
+            console.error("Failed to fetch initial PC data", error);
+            toast({ variant: "destructive", title: "Error", description: "Could not fetch page data." });
+            router.push('/');
         }
-      }
-      setConversations(newConversations);
-      setUnreadCounts(newUnreadCounts);
-    } catch (error) {
-      console.error("Failed to fetch messages:", error);
     }
-  }, [role]);
+
+    fetchAndReservePc();
+
+  }, [role, activeConversation, pc, router, toast]);
+
+  const fetchMessagesAndStatus = useCallback(async () => {
+    try {
+        if (role === 'admin') {
+            const allPcsResponse = await fetch('/api/pc-status');
+            const allPcs = await allPcsResponse.json();
+            const newConversations: Record<string, Message[]> = {};
+            const newUnreadCounts: Record<string, number> = {};
+
+            for (const pc of allPcs) {
+                const response = await fetch(`/api/messages?pcName=${pc.name}`);
+                const messages: Message[] = await response.json();
+                if (messages.length > 0) {
+                    newConversations[pc.name] = messages;
+                    newUnreadCounts[pc.name] = messages.filter(m => !m.isRead && m.sender !== role).length;
+                }
+            }
+            setConversations(newConversations);
+            setUnreadCounts(newUnreadCounts);
+        } else if (role === 'user' && pc) {
+            // Fetch messages for the user's current PC
+            const msgResponse = await fetch(`/api/messages?pcName=${pc.name}`);
+            const messages: Message[] = await msgResponse.json();
+            setConversations(prev => ({ ...prev, [pc.name]: messages }));
+
+            // Poll for status changes on the user's PC
+            const statusResponse = await fetch(`/api/pc-status?id=${pc.id}`);
+            const updatedPc: PC = await statusResponse.json();
+            setPc(updatedPc);
+        }
+    } catch (error) {
+      console.error("Failed to fetch data:", error);
+    }
+  }, [role, pc]);
+
 
   useEffect(() => {
-    fetchMessages();
-    const intervalId = setInterval(fetchMessages, 3000);
+    fetchMessagesAndStatus();
+    const intervalId = setInterval(fetchMessagesAndStatus, 3000);
     return () => clearInterval(intervalId);
-  }, [fetchMessages]);
+  }, [fetchMessagesAndStatus]);
 
   const sendMessage = async (text: string) => {
     const targetPcName = activeConversation;
@@ -69,7 +139,7 @@ export function ChatProvider({ children, role, pcName }: ChatProviderProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ pcName: targetPcName, sender: role, text }),
       });
-      fetchMessages(); // Re-fetch to get the latest messages
+      fetchMessagesAndStatus(); // Re-fetch to get the latest messages
     } catch (error) {
       console.error("Failed to send message:", error);
     }
@@ -78,7 +148,6 @@ export function ChatProvider({ children, role, pcName }: ChatProviderProps) {
   const setActiveConversation = useCallback(async (pcName: string | null) => {
     setActiveConversationState(pcName);
     if (pcName && role === 'admin') {
-      // Mark messages as read
       setUnreadCounts(prev => ({...prev, [pcName]: 0}));
       try {
         await fetch('/api/messages', {
@@ -99,6 +168,9 @@ export function ChatProvider({ children, role, pcName }: ChatProviderProps) {
     setActiveConversation,
     sendMessage,
     unreadCounts,
+    pc,
+    setPc,
+    pcName: activeConversation,
   };
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;

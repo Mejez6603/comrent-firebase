@@ -1,3 +1,4 @@
+'use server';
 import { NextResponse } from 'next/server';
 import type { PC, PCStatus, PaymentMethod } from '@/lib/types';
 
@@ -28,6 +29,8 @@ pcs[1].paymentMethod = 'GCash';
 pcs[3].status = 'pending_payment';
 pcs[3].paymentMethod = 'Maya';
 pcs[3].user = 'user_c';
+pcs[3].session_duration = 30;
+pcs[3].email = 'user_c@example.com';
 
 pcs[5].status = 'maintenance';
 
@@ -156,10 +159,10 @@ export async function PUT(request: Request) {
         // This is triggered when reserving a PC or for manual payment collection
         const previousStatus = pcs[pcIndex].status;
         if(previousStatus === 'available' || !pcs[pcIndex].user) {
-            pcs[pcIndex].user = undefined;
-            pcs[pcIndex].email = undefined;
-            pcs[pcIndex].paymentMethod = undefined;
-            pcs[pcIndex].session_duration = undefined;
+            pcs[pcIndex].user = user;
+            pcs[pcIndex].email = email;
+            pcs[pcIndex].paymentMethod = paymentMethod;
+            pcs[pcIndex].session_duration = duration;
         }
         pcs[pcIndex].session_start = undefined;
         
