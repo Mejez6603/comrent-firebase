@@ -1,7 +1,6 @@
 'use client';
 
 import type { FC } from 'react';
-import Link from 'next/link';
 import type { PC, PCStatus } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import {
@@ -11,6 +10,8 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Monitor, Power, Hourglass, Ban, Wifi, WifiOff, Wrench, CircleHelp } from 'lucide-react';
+import { WelcomeDialog } from './welcome-dialog';
+import { useState } from 'react';
 
 type StatusConfig = {
   [key in PCStatus]: {
@@ -61,15 +62,25 @@ const statusConfig: StatusConfig = {
 };
 
 export function PcCard({ pc, isOnline }: { pc: PC; isOnline: boolean }) {
+  const [isWelcomeDialogOpen, setIsWelcomeDialogOpen] = useState(false);
   const config = statusConfig[pc.status];
   const Icon = config.icon;
 
+  const canClick = config.clickable && isOnline;
+
+  const handleCardClick = () => {
+    if (canClick) {
+      setIsWelcomeDialogOpen(true);
+    }
+  };
+
   const cardElement = (
     <Card
+      onClick={handleCardClick}
       className={cn(
         'transition-all duration-300 ease-in-out transform hover:-translate-y-1 shadow-md hover:shadow-xl relative overflow-hidden',
         config.cardClass,
-        config.clickable && isOnline
+        canClick
           ? 'cursor-pointer'
           : 'cursor-not-allowed opacity-80',
         !isOnline && 'bg-gray-700 border-gray-600 opacity-60'
@@ -94,13 +105,14 @@ export function PcCard({ pc, isOnline }: { pc: PC; isOnline: boolean }) {
     </Card>
   );
 
-  if (config.clickable && isOnline) {
-    return (
-      <Link href={`/payment?pc=${pc.name}`} className="block no-underline">
-        {cardElement}
-      </Link>
-    );
-  }
-
-  return cardElement;
+  return (
+    <>
+      {cardElement}
+      <WelcomeDialog 
+        isOpen={isWelcomeDialogOpen}
+        onOpenChange={setIsWelcomeDialogOpen}
+        pcName={pc.name}
+      />
+    </>
+  );
 }
