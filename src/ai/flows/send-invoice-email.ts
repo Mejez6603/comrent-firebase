@@ -52,8 +52,6 @@ const emailGenerationPrompt = ai.definePrompt({
     - Session Duration: {{{duration}}}
     - Amount Due: {{{amount}}}
     - Company Name: {{{companyName}}}
-
-    CRITICAL: Your entire output must be a single, valid JSON object that conforms to the specified output schema. Do not include any text or formatting before or after the JSON object.
   `,
 });
 
