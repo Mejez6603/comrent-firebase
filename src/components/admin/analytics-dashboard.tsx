@@ -371,5 +371,3 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
     </div>
   );
 }
-
-    
