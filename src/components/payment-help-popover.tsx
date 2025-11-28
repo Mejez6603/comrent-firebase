@@ -32,12 +32,12 @@ export function PaymentHelpPopover() {
   };
 
   return (
-    <>
+    <div className="relative">
       {showHelpHint && !isPopoverOpen && (
-        <div className="absolute bottom-[60px] right-2 flex animate-bounce items-center justify-center">
+        <div className="absolute bottom-3 right-16 flex animate-bounce items-center justify-center">
             <div className="relative rounded-full bg-primary px-4 py-2 text-primary-foreground shadow-lg">
                 <p className="text-sm font-bold">Need Help?</p>
-                <div className="absolute right-[-8px] top-1/2 h-4 w-4 -translate-y-1/2 rotate-45 bg-primary"></div>
+                <div className="absolute right-[-4px] top-1/2 h-4 w-4 -translate-y-1/2 rotate-45 bg-primary"></div>
             </div>
         </div>
       )}
@@ -94,6 +94,6 @@ export function PaymentHelpPopover() {
           </div>
         </PopoverContent>
       </Popover>
-    </>
+    </div>
   );
 }
