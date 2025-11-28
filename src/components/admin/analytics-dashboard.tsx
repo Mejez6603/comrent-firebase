@@ -20,28 +20,31 @@ import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { addDays, format } from 'date-fns';
+import { addDays, format, subMonths } from 'date-fns';
 import { DateRange } from 'react-day-picker';
 
 type AnalyticsDashboardProps = {
   pcs: PC[];
+  historicalSessions: PC[];
   pricingTiers: PricingTier[];
 };
 
-export function AnalyticsDashboard({ pcs, pricingTiers }: AnalyticsDashboardProps) {
+export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: AnalyticsDashboardProps) {
   const [date, setDate] = useState<DateRange | undefined>({
-    from: addDays(new Date(), -7),
+    from: subMonths(new Date(), 3),
     to: new Date(),
   });
 
   const stats = useMemo(() => {
-    const allSessions = pcs.filter(pc => (pc.status === 'in_use' || pc.status === 'pending_payment') && pc.session_start && pc.session_duration);
+    // Combine historical data with current "in_use" and "pending_payment" sessions
+    const currentSessions = pcs.filter(pc => (pc.status === 'in_use' || pc.status === 'pending_payment'));
+    const allSessions = [...historicalSessions, ...currentSessions];
 
     const filteredSessions = allSessions.filter(pc => {
-        if (!date?.from || !pc.session_start) return true;
+        if (!date?.from || !pc.session_start) return false; // Don't include sessions without a start date
         const sessionDate = new Date(pc.session_start);
         const fromDate = date.from;
-        const toDate = date.to ? addDays(date.to, 1) : addDays(fromDate, 1);
+        const toDate = date.to ? addDays(date.to, 1) : addDays(new Date(), 1); // Use today if no end date
         return sessionDate >= fromDate && sessionDate < toDate;
     });
 
@@ -55,7 +58,6 @@ export function AnalyticsDashboard({ pcs, pricingTiers }: AnalyticsDashboardProp
 
     const totalMinutes = filteredSessions.reduce((acc, pc) => acc + (pc.session_duration || 0), 0);
     const averageSessionMinutes = totalSessions > 0 ? totalMinutes / totalSessions : 0;
-
 
     const statusCounts = pcs.reduce((acc, pc) => {
       acc[pc.status] = (acc[pc.status] || 0) + 1;
@@ -111,7 +113,7 @@ export function AnalyticsDashboard({ pcs, pricingTiers }: AnalyticsDashboardProp
         pcUtilizationChartData,
         durationPopularityChartData,
     };
-  }, [pcs, pricingTiers, date]);
+  }, [pcs, historicalSessions, pricingTiers, date]);
 
   return (
     <div className="space-y-4">
@@ -271,7 +273,3 @@ export function AnalyticsDashboard({ pcs, pricingTiers }: AnalyticsDashboardProp
     </div>
   );
 }
-
-    
-
-    

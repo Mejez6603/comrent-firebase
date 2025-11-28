@@ -22,6 +22,7 @@ import { PC, PricingTier } from '@/lib/types';
 export function AdminLayout({ children }: { children: React.ReactNode }) {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [pcs, setPcs] = useState<PC[]>([]);
+  const [historicalSessions, setHistoricalSessions] = useState<PC[]>([]);
   const [auditLogs, setAuditLogs] = useState<string[]>([]);
   const [pricingTiers, setPricingTiers] = useState<PricingTier[]>([]);
 
@@ -35,7 +36,17 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
         console.error("Failed to fetch pricing tiers", error);
       }
     }
+    async function fetchHistoricalData() {
+      try {
+        const res = await fetch('/api/historical-sessions');
+        const data = await res.json();
+        setHistoricalSessions(data);
+      } catch (error) {
+        console.error("Failed to fetch historical sessions", error);
+      }
+    }
     fetchPricing();
+    fetchHistoricalData();
   }, []);
 
   const addAuditLog = (log: string) => {
@@ -46,7 +57,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
   const renderContent = () => {
     switch (activeTab) {
       case 'analytics':
-        return <AnalyticsDashboard pcs={pcs} pricingTiers={pricingTiers} />;
+        return <AnalyticsDashboard pcs={pcs} historicalSessions={historicalSessions} pricingTiers={pricingTiers} />;
       case 'audit-log':
         return <AuditLog logs={auditLogs} />;
       case 'pricing':
