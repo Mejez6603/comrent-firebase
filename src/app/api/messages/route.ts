@@ -1,3 +1,16 @@
+'use server';
+/**
+ * @fileOverview API route for handling chat messages.
+ *
+ * This file defines the API endpoints for getting, creating, updating (marking as read),
+ * and deleting chat messages. It uses an in-memory Map to store messages, grouped by PC name.
+ *
+ * - GET: Retrieves messages for a specific PC.
+ * - POST: Adds a new message to a conversation.
+ * - PUT: Marks all messages for a PC as read.
+ * - DELETE: Clears all messages (for testing purposes).
+ */
+
 import { NextResponse } from 'next/server';
 
 export interface Message {
@@ -10,7 +23,7 @@ export interface Message {
 }
 
 // In-memory store for messages, grouped by pcName
-let messagesByPc = new Map<string, Message[]>();
+export let messagesByPc = new Map<string, Message[]>();
 
 // GET messages for a specific PC
 export async function GET(request: Request) {
@@ -76,7 +89,7 @@ export async function PUT(request: Request) {
 }
 
 
-export async function DELETE() {
+export async function DELETE(request: Request) {
     // Test-only endpoint to clear messages
     if (process.env.NODE_ENV !== 'production') {
         messagesByPc.clear();

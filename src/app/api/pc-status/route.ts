@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { PC, PCStatus, PaymentMethod } from '@/lib/types';
+import { messagesByPc } from '@/app/api/messages/route';
 
 let pcs: PC[] = Array.from({ length: 12 }, (_, i) => ({
   id: `${i + 1}`,
@@ -120,6 +121,8 @@ export async function PUT(request: Request) {
         return NextResponse.json({ message: 'PC not found' }, { status: 404 });
       }
 
+      const previousStatus = pcs[pcIndex].status;
+
       // Handle name change
       if (newName) {
         pcs[pcIndex].name = newName;
@@ -156,7 +159,6 @@ export async function PUT(request: Request) {
 
       } else if (newStatus === 'pending_payment') {
         // This is triggered when reserving a PC or for manual payment collection
-        const previousStatus = pcs[pcIndex].status;
         if(previousStatus === 'available' || !pcs[pcIndex].user) {
             pcs[pcIndex].user = user;
             pcs[pcIndex].email = email;
@@ -172,6 +174,15 @@ export async function PUT(request: Request) {
         pcs[pcIndex].session_duration = undefined;
         pcs[pcIndex].email = undefined;
         pcs[pcIndex].paymentMethod = undefined;
+        
+        // If the previous status was 'time_up', clear the chat messages for this PC
+        if (previousStatus === 'time_up') {
+            const pcName = pcs[pcIndex].name;
+            if (messagesByPc.has(pcName)) {
+                messagesByPc.delete(pcName);
+                console.log(`INFO: Cleared chat messages for ${pcName}.`);
+            }
+        }
       }
   
       return NextResponse.json(pcs[pcIndex]);
