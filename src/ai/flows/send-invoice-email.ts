@@ -43,17 +43,17 @@ const emailGenerationPrompt = ai.definePrompt({
   input: { schema: GenerateInvoiceEmailInputSchema },
   output: { format: "json", schema: GenerateInvoiceEmailOutputSchema },
   prompt: `
-    You are an email generating assistant. Your task is to generate a professional and friendly invoice email.
-    The email body should be plain text, not HTML or markdown.
+    You are an assistant that generates professional and friendly invoice emails.
+    Your task is to create a subject and a plain text body for an invoice email based on the provided details.
     
-    Generate a subject and a body for an invoice email based on the following details:
-    - Customer: {{{customerName}}}
+    Generate the email for the following invoice:
+    - Customer Name: {{{customerName}}}
     - Service: PC Rental ({{{pcName}}})
-    - Duration: {{{duration}}}
+    - Session Duration: {{{duration}}}
     - Amount Due: {{{amount}}}
-    - Company: {{{companyName}}}
+    - Company Name: {{{companyName}}}
 
-    The tone should be professional but friendly. Ensure the output is a valid JSON object matching the requested schema.
+    CRITICAL: Your entire output must be a single, valid JSON object that conforms to the specified output schema. Do not include any text or formatting before or after the JSON object.
   `,
 });
 
