@@ -93,25 +93,38 @@ function PaymentForm() {
     fetchInitialData();
   }, [pcName, router, toast]);
 
-  useEffect(() => {
+    useEffect(() => {
     if (!pc) return;
 
-    if (pc.status === 'in_use' && step !== 'in_session' && pc.session_start && pc.session_duration) {
-      setStep('in_session');
-      const startTime = new Date(pc.session_start);
-      const endTime = add(startTime, { minutes: pc.session_duration });
-      setSessionEndTime(endTime);
+    // Retrieve the current user's session details from localStorage
+    const storedUserDetailsRaw = localStorage.getItem(`session-details-${pc.name}`);
+    const storedUserDetails = storedUserDetailsRaw ? JSON.parse(storedUserDetailsRaw) : null;
+
+    if (pc.status === 'in_use' && pc.session_start && pc.session_duration) {
+      // Check if the session belongs to the current user before changing the step
+      if (storedUserDetails && storedUserDetails.user === pc.user && storedUserDetails.duration === pc.session_duration) {
+        if (step !== 'in_session') {
+          setStep('in_session');
+          const startTime = new Date(pc.session_start);
+          const endTime = add(startTime, { minutes: pc.session_duration });
+          setSessionEndTime(endTime);
+        }
+      }
     } else if (pc.status === 'time_up' && step !== 'session_ended') {
       setStep('session_ended');
       setTimeRemaining('00:00:00');
       startAlarm();
       setIsSessionEndModalOpen(true);
     } else if (pc.status === 'pending_approval' && step !== 'pending_approval') {
+      // Also check if the pending approval belongs to the current user
+      if (storedUserDetails && storedUserDetails.user === pc.user && storedUserDetails.duration === pc.session_duration) {
         setStep('pending_approval');
+      }
     } else if (pc.status === 'available' && (step === 'pending_approval' || step === 'session_ended')) {
-        router.push('/');
+      // If the PC becomes available, clear stored details and redirect
+      localStorage.removeItem(`session-details-${pc.name}`);
+      router.push('/');
     }
-
   }, [pc, step, startAlarm, router]);
 
 
@@ -177,15 +190,23 @@ function PaymentForm() {
 
     setIsProcessing(true);
     try {
+        const sessionDetails = {
+            user: name,
+            email: email,
+            duration: parseInt(selectedDuration.value),
+        };
+        // Store session details in localStorage to identify the user's session
+        localStorage.setItem(`session-details-${pc.name}`, JSON.stringify(sessionDetails));
+
         const response = await fetch('/api/pc-status', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
                 id: pc.id, 
                 newStatus: 'pending_approval',
-                duration: parseInt(selectedDuration.value),
-                user: name,
-                email: email,
+                duration: sessionDetails.duration,
+                user: sessionDetails.user,
+                email: sessionDetails.email,
                 paymentMethod: selectedPaymentMethod,
             })
         });
@@ -223,6 +244,9 @@ function PaymentForm() {
         if (!response.ok) {
             throw new Error('Failed to cancel session.');
         }
+
+        // Clear stored session details on cancellation
+        localStorage.removeItem(`session-details-${pc.name}`);
         
         router.push('/');
         toast({
@@ -248,6 +272,7 @@ function PaymentForm() {
   const handleAcknowledgeSessionEnd = () => {
     stopAlarm();
     setIsSessionEndModalOpen(false);
+    localStorage.removeItem(`session-details-${pc?.name}`);
   }
 
   if (!pcName) {
@@ -317,7 +342,7 @@ function PaymentForm() {
                     <Hourglass className="h-16 w-16 text-accent mx-auto animate-spin-slow" />
                     <h2 className="text-2xl font-bold">Waiting for Approval</h2>
                     <p className="text-muted-foreground">An admin has been notified. Your session will start shortly.</p>
-                    <p className='text-sm pt-4'>You are renting <span className='font-bold text-accent'>{pcName}</span> for <span className='font-bold text-accent'>{selectedDuration?.label}</span>.</p>
+                    <p className='text-sm pt-4'>You are renting <span className='font-bold text-accent'>{pcName}</span> for <span className='font-bold text-accent'>{pricingTiers.find(p => p.value === String(pc?.session_duration))?.label}</span>.</p>
                      <div className="pt-6">
                         <Button variant="ghost" onClick={handleCancelApproval} disabled={isProcessing}>
                             {isProcessing ? <Loader className="animate-spin mr-2"/> : <XCircle className="mr-2" />}
