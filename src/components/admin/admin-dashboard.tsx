@@ -6,7 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, RefreshCw } from "lucide-react";
 import { AdminPcTable } from './admin-pc-table';
-import { Button } from '../ui/button';
+import { AdminNotificationPanel } from './admin-notification-panel';
 
 type AdminDashboardProps = {
     pcs: PC[];
@@ -18,6 +18,7 @@ export function AdminDashboard({ pcs, setPcs, addAuditLog }: AdminDashboardProps
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
+  const [previousPcs, setPreviousPcs] = useState<PC[]>([]);
 
   const fetchStatuses = useCallback(async () => {
     try {
@@ -26,6 +27,7 @@ export function AdminDashboard({ pcs, setPcs, addAuditLog }: AdminDashboardProps
         throw new Error('Network response was not ok');
       }
       const data: PC[] = await response.json();
+      setPreviousPcs(pcs);
       setPcs(data);
       if (!isOnline) setIsOnline(true);
     } catch (error) {
@@ -35,7 +37,7 @@ export function AdminDashboard({ pcs, setPcs, addAuditLog }: AdminDashboardProps
       if(isLoading) setIsLoading(false);
       if(isRefreshing) setIsRefreshing(false);
     }
-  }, [isOnline, isLoading, isRefreshing, setPcs]);
+  }, [isOnline, isLoading, isRefreshing, setPcs, pcs]);
 
   const handleRefresh = () => {
     setIsRefreshing(true);
@@ -57,6 +59,7 @@ export function AdminDashboard({ pcs, setPcs, addAuditLog }: AdminDashboardProps
   if (isLoading) {
     return (
         <div className="space-y-4">
+            <Skeleton className="h-[150px] w-full rounded-lg" />
             <Skeleton className="h-[40px] w-full rounded-lg" />
             <Skeleton className="h-[450px] w-full rounded-lg" />
         </div>
@@ -74,6 +77,9 @@ export function AdminDashboard({ pcs, setPcs, addAuditLog }: AdminDashboardProps
             </AlertDescription>
         </Alert>
       )}
+       <div className="mb-6">
+          <AdminNotificationPanel pcs={pcs} previousPcs={previousPcs} />
+        </div>
       <AdminPcTable 
         pcs={pcs} 
         setPcs={setPcs} 
