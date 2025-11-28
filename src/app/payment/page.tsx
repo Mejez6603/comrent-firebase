@@ -80,13 +80,27 @@ function PaymentForm() {
             const res = await fetch('/api/pc-status');
             const allPcs: PC[] = await res.json();
             const currentPc = allPcs.find(p => p.name === pcName);
+            
             if (currentPc) {
                 if (currentPc.status !== 'available') {
                     toast({ variant: "destructive", title: "PC Not Available", description: `${pcName} is currently not available for rent.` });
                     router.push('/');
                     return;
                 }
-                setPc(currentPc);
+                
+                // Immediately mark the PC as pending to reserve it
+                const updateRes = await fetch('/api/pc-status', {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ id: currentPc.id, newStatus: 'pending_payment' })
+                });
+
+                if (!updateRes.ok) {
+                  throw new Error('Failed to reserve PC');
+                }
+
+                const updatedPc = await updateRes.json();
+                setPc(updatedPc);
             } else {
                 toast({ variant: "destructive", title: "Error", description: "PC not found." });
                 router.push('/');
@@ -94,6 +108,7 @@ function PaymentForm() {
         } catch (error) {
             console.error("Failed to fetch initial data", error)
             toast({ variant: "destructive", title: "Error", description: "Could not fetch page data." });
+            router.push('/');
         }
     }
     fetchInitialData();
@@ -242,8 +257,7 @@ function PaymentForm() {
             throw new Error('Failed to cancel session.');
         }
 
-        setStep('selection');
-        setSelectedPaymentMethod(null);
+        router.push('/');
         toast({
             title: 'Session Cancelled',
             description: 'Your rental request has been cancelled.',
@@ -437,17 +451,17 @@ function PaymentForm() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6 px-8">
-        {pricingTiers.length > 0 ? renderContent() : <div className="flex justify-center items-center h-48"><Loader className="h-8 w-8 animate-spin" /></div>}
+        {pricingTiers.length > 0 && pc ? renderContent() : <div className="flex justify-center items-center h-48"><Loader className="h-8 w-8 animate-spin" /></div>}
       </CardContent>
       {(step === 'selection' || step === 'pending_approval') && (
         <CardFooter className="flex flex-col gap-4 px-8 pb-8 mt-4">
             {step === 'selection' && !selectedPaymentMethod && <Separator className="my-4" />}
             {step === 'selection' && 
-                <Button asChild variant="ghost" className="w-full" disabled={isProcessing}>
-                    <Link href="/">
+                <Button asChild variant="ghost" className="w-full" disabled={isProcessing} onClick={handleCancelApproval}>
+                    <span>
                         <ArrowLeft className="mr-2 h-4 w-4" />
                         Cancel and Go Back
-                    </Link>
+                    </span>
                 </Button>
             }
         </CardFooter>

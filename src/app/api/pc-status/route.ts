@@ -147,10 +147,17 @@ export async function PUT(request: Request) {
         pcs[pcIndex].session_start = undefined; // Clear start time until approved
       
       } else if (newStatus === 'pending_payment') {
-        // This is triggered by the client when the session ends
-        // Keep user/email/payment info for reference
+        // This is triggered by the client when the session ends OR when entering payment page
+        // Keep user/email/payment info for reference if coming from session end
+        // Clear if coming from 'available'
+        const previousStatus = pcs[pcIndex].status;
+        if(previousStatus === 'available' || !pcs[pcIndex].user) {
+            pcs[pcIndex].user = undefined;
+            pcs[pcIndex].email = undefined;
+            pcs[pcIndex].paymentMethod = undefined;
+            pcs[pcIndex].session_duration = undefined;
+        }
         pcs[pcIndex].session_start = undefined;
-        // Don't clear session_duration, it's useful for analytics/invoicing
         
       } else if (['available', 'maintenance', 'unavailable'].includes(newStatus || '')) {
         // Clear all session-related data when resetting the PC
