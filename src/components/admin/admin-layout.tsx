@@ -51,7 +51,11 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
             n.rawMessage === newNotification.rawMessage
         );
         if (isDuplicate) return prev;
-        return [newNotification, ...prev];
+        const newNotifications = [newNotification, ...prev];
+        if (newNotifications.length > 50) {
+            newNotifications.length = 50; // Keep the list from growing indefinitely
+        }
+        return newNotifications;
     });
     addAuditLog(notification.rawMessage);
   }, [addAuditLog]);
@@ -64,8 +68,8 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
     async function fetchPricing() {
       try {
         const res = await fetch('/api/pricing');
-        const data = await res.json();
-        setPricingTiers(data);
+        const data: PricingTier[] = await res.json();
+        setPricingTiers(data.sort((a,b) => Number(a.value) - Number(b.value)));
       } catch (error) {
         console.error("Failed to fetch pricing tiers", error);
       }
