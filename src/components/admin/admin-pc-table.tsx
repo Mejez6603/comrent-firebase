@@ -347,7 +347,7 @@ export function AdminPcTable({ pcs, setPcs, addAuditLog }: AdminPcTableProps) {
                         {pc.email && ['pending_payment', 'in_use', 'pending_approval'].includes(pc.status) ? (
                             <Button
                                 variant="link"
-                                className="p-0 h-auto text-muted-foreground hover:text-primary"
+                                className="p-0 h-auto underline"
                                 onClick={() => handleOpenInvoiceDialog(pc)}
                             >
                                 {pc.email}
