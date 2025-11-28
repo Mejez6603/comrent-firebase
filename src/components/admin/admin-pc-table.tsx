@@ -343,16 +343,23 @@ export function AdminPcTable({ pcs, setPcs, addAuditLog }: AdminPcTableProps) {
                       </DropdownMenu>
                     </TableCell>
                     <TableCell>{pc.user || '-'}</TableCell>
-                    <TableCell>{pc.email || '-'}</TableCell>
+                    <TableCell>
+                        {pc.email && ['pending_payment', 'in_use', 'pending_approval'].includes(pc.status) ? (
+                            <Button
+                                variant="link"
+                                className="p-0 h-auto text-muted-foreground hover:text-primary"
+                                onClick={() => handleOpenInvoiceDialog(pc)}
+                            >
+                                {pc.email}
+                            </Button>
+                        ) : (
+                            pc.email || '-'
+                        )}
+                    </TableCell>
                     <TableCell>{timeRemaining}</TableCell>
                     <TableCell className="text-right">
                         <div className="flex gap-1 justify-end">
-                            {pc.email && ['pending_payment', 'in_use'].includes(pc.status) && (
-                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleOpenInvoiceDialog(pc)}>
-                                    <FileText className="h-4 w-4" />
-                                </Button>
-                            )}
-                          {isEditing ? (
+                            {isEditing ? (
                             <>
                               <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleSaveName(pc.id)}>
                                 <Save className="h-4 w-4" />
