@@ -397,7 +397,7 @@ function PaymentForm() {
 
 export default function PaymentPage() {
   return (
-    <main className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-background to-secondary p-4 relative">
+    <main className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-background to-secondary p-4">
       <Suspense fallback={<Card className="w-full max-w-lg h-[620px]"><CardContent><div className="animate-pulse rounded-md bg-muted h-full w-full"></div></CardContent></Card>}>
         <PaymentForm />
       </Suspense>
