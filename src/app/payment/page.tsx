@@ -21,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ArrowLeft, Clock, Mail, User, CheckCircle, Loader, Send, Hourglass, PlusCircle, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Clock, Mail, User, CheckCircle, Loader, Send, Hourglass, PlusCircle, AlertCircle, XCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { PC, PaymentMethod, PricingTier } from '@/lib/types';
@@ -81,6 +81,11 @@ function PaymentForm() {
             const allPcs: PC[] = await res.json();
             const currentPc = allPcs.find(p => p.name === pcName);
             if (currentPc) {
+                if (currentPc.status !== 'available') {
+                    toast({ variant: "destructive", title: "PC Not Available", description: `${pcName} is currently not available for rent.` });
+                    router.push('/');
+                    return;
+                }
                 setPc(currentPc);
             } else {
                 toast({ variant: "destructive", title: "Error", description: "PC not found." });
@@ -209,6 +214,40 @@ function PaymentForm() {
     }
   }
 
+  const handleCancelApproval = async () => {
+    if (!pc) return;
+    setIsProcessing(true);
+    try {
+        const response = await fetch('/api/pc-status', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                id: pc.id,
+                newStatus: 'available',
+            }),
+        });
+        if (!response.ok) {
+            throw new Error('Failed to cancel session.');
+        }
+
+        setStep('selection');
+        setSelectedPaymentMethod(null);
+        toast({
+            title: 'Session Cancelled',
+            description: 'Your rental request has been cancelled.',
+        });
+    } catch (error) {
+        console.error(error);
+        toast({
+            variant: 'destructive',
+            title: 'Error',
+            description: 'Could not cancel the session.',
+        });
+    } finally {
+        setIsProcessing(false);
+    }
+  }
+
   const handleExtend = () => {
     toast({ title: "Extend Session", description: "This feature is coming soon!"})
   }
@@ -284,6 +323,12 @@ function PaymentForm() {
                     <h2 className="text-2xl font-bold">Waiting for Approval</h2>
                     <p className="text-muted-foreground">An admin has been notified. Your session will start shortly.</p>
                     <p className='text-sm pt-4'>You are renting <span className='font-bold text-accent'>{pcName}</span> for <span className='font-bold text-accent'>{selectedDuration?.label}</span>.</p>
+                     <div className="pt-6">
+                        <Button variant="ghost" onClick={handleCancelApproval} disabled={isProcessing}>
+                            {isProcessing ? <Loader className="animate-spin mr-2"/> : <XCircle className="mr-2" />}
+                            Cancel Request
+                        </Button>
+                    </div>
                 </div>
             )
         case 'selection':
@@ -382,15 +427,17 @@ function PaymentForm() {
       <CardContent className="space-y-6 px-8">
         {pricingTiers.length > 0 ? renderContent() : <div className="flex justify-center items-center h-48"><Loader className="h-8 w-8 animate-spin" /></div>}
       </CardContent>
-      <CardFooter className="flex flex-col gap-4 px-8 pb-8 mt-4">
-       {(step === 'selection' && !selectedPaymentMethod) && <Separator className="my-4" />}
-        <Button asChild variant="ghost" className="w-full" disabled={isProcessing || step === 'pending_approval' || step === 'in_session'}>
-          <Link href="/">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Cancel and Go Back
-          </Link>
-        </Button>
-      </CardFooter>
+      {step === 'selection' && (
+        <CardFooter className="flex flex-col gap-4 px-8 pb-8 mt-4">
+            {!selectedPaymentMethod && <Separator className="my-4" />}
+            <Button asChild variant="ghost" className="w-full" disabled={isProcessing}>
+            <Link href="/">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Cancel and Go Back
+            </Link>
+            </Button>
+        </CardFooter>
+      )}
     </Card>
   );
 }
@@ -405,3 +452,5 @@ export default function PaymentPage() {
     </main>
   );
 }
+
+    
