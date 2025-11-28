@@ -21,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ArrowLeft, Clock, Mail, User, CheckCircle, Loader, Send, Hourglass, PlusCircle } from 'lucide-react';
+import { ArrowLeft, Clock, Mail, User, CheckCircle, Loader, Send, Hourglass, PlusCircle, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { PC } from '@/lib/types';
@@ -30,7 +30,7 @@ import { add, formatDistanceToNowStrict } from 'date-fns';
 import { Separator } from '@/components/ui/separator';
 
 type PaymentMethod = 'GCash' | 'Maya' | 'QR Code';
-type PaymentStep = 'selection' | 'pending_approval' | 'in_session';
+type PaymentStep = 'selection' | 'pending_approval' | 'in_session' | 'session_ended';
 
 const durationOptions = [
   { value: '30', label: '30 minutes', price: 30 },
@@ -61,6 +61,7 @@ function PaymentForm() {
 
   const [sessionEndTime, setSessionEndTime] = useState<Date | null>(null);
   const [timeRemaining, setTimeRemaining] = useState('');
+  const [notified, setNotified] = useState<Record<number, boolean>>({});
 
   const selectedDuration = useMemo(
     () => durationOptions.find(opt => opt.value === duration),
@@ -119,26 +120,51 @@ function PaymentForm() {
     const timerId = setInterval(() => {
       const now = new Date();
       const endTime = new Date(sessionEndTime);
+      const totalSeconds = Math.floor((endTime.getTime() - now.getTime()) / 1000);
 
-      if (now >= endTime) {
+      if (totalSeconds <= 0) {
         setTimeRemaining('00:00:00');
         clearInterval(timerId);
+        setStep('session_ended');
+        toast({
+          title: "Session Ended",
+          description: "Your time is up. Would you like to extend your session?",
+          duration: 20000,
+          action: (
+            <Button onClick={handleExtend}><PlusCircle className="mr-2"/>Extend</Button>
+          )
+        });
         return;
       }
-
-      const totalSeconds = Math.floor((endTime.getTime() - now.getTime()) / 1000);
       
       const hours = Math.floor(totalSeconds / 3600);
       const minutes = Math.floor((totalSeconds % 3600) / 60);
       const seconds = totalSeconds % 60;
 
       const formattedTime = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-      
       setTimeRemaining(formattedTime);
+      
+      // Time-based notifications
+      const remainingMinutes = Math.ceil(totalSeconds / 60);
+      
+      if (remainingMinutes <= 10 && !notified[10]) {
+        toast({ title: "10 Minutes Remaining", description: "Your session is ending soon."});
+        setNotified(prev => ({...prev, 10: true}));
+      }
+      if (remainingMinutes <= 5 && !notified[5]) {
+        toast({ title: "5 Minutes Remaining", description: "Your session is ending soon."});
+        setNotified(prev => ({...prev, 5: true}));
+      }
+      if (remainingMinutes <= 1 && !notified[1]) {
+        toast({ variant: "destructive", title: "1 Minute Remaining!", description: "Your session will end in one minute."});
+        setNotified(prev => ({...prev, 1: true}));
+      }
+
     }, 1000);
 
     return () => clearInterval(timerId);
-  }, [step, sessionEndTime]);
+  }, [step, sessionEndTime, toast, notified]);
+
 
   const handlePaymentMethodSelect = (method: PaymentMethod) => {
     setSelectedPaymentMethod(method);
@@ -178,7 +204,6 @@ function PaymentForm() {
   }
 
   const handleExtend = () => {
-    // Placeholder for extend functionality
     toast({ title: "Extend Session", description: "This feature is coming soon!"})
   }
 
@@ -206,6 +231,24 @@ function PaymentForm() {
 
   const renderContent = () => {
     switch (step) {
+        case 'session_ended':
+            return (
+                <div className="text-center space-y-6 animate-in fade-in-50">
+                    <AlertCircle className="h-20 w-20 text-destructive mx-auto" />
+                    <div>
+                        <h2 className="text-2xl font-bold">Session Ended</h2>
+                        <p className="text-muted-foreground">Your time on {pcName} has finished.</p>
+                    </div>
+                    <div className="flex flex-col gap-3 pt-4">
+                        <Button size="lg" onClick={handleExtend}>
+                            <PlusCircle className="mr-2"/> Extend Time
+                        </Button>
+                        <Button size="lg" asChild variant="secondary">
+                           <Link href="/">Back to Dashboard</Link>
+                        </Button>
+                    </div>
+                </div>
+            )
         case 'in_session':
             return (
                 <div className="text-center space-y-6 animate-in fade-in-50">
@@ -355,3 +398,5 @@ export default function PaymentPage() {
     </main>
   );
 }
+
+    
