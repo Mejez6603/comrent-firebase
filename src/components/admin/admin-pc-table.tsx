@@ -28,6 +28,7 @@ import {
     FileText,
     CreditCard,
     RefreshCw,
+    PlusCircle
   } from 'lucide-react';
 import type { FC } from 'react';
 import { useState } from 'react';
@@ -124,6 +125,10 @@ export function AdminPcTable({ pcs, setPcs, addAuditLog, onRefresh, isRefreshing
   const [invoiceContent, setInvoiceContent] = useState<GenerateInvoiceEmailOutput | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  
+  const [isAddPcDialogOpen, setIsAddPcDialogOpen] = useState(false);
+  const [newPcName, setNewPcName] = useState('');
+  const [isAddingPc, setIsAddingPc] = useState(false);
 
   const { toast } = useToast();
 
@@ -143,7 +148,7 @@ export function AdminPcTable({ pcs, setPcs, addAuditLog, onRefresh, isRefreshing
 
     try {
       const response = await fetch('/api/pc-status', {
-        method: 'POST',
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id, newName: editingName }),
       });
@@ -272,6 +277,35 @@ export function AdminPcTable({ pcs, setPcs, addAuditLog, onRefresh, isRefreshing
     }
   };
 
+  const handleAddNewPc = async () => {
+    if (!newPcName.trim()) {
+        toast({ variant: 'destructive', title: 'Error', description: 'PC name cannot be empty.' });
+        return;
+    }
+    setIsAddingPc(true);
+    try {
+        const response = await fetch('/api/pc-status', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: newPcName }),
+        });
+        if (!response.ok) throw new Error('Failed to create new PC');
+
+        const newPc: PC = await response.json();
+        setPcs(prev => [...prev, newPc]);
+        addAuditLog(`Added new PC: "${newPc.name}".`);
+        toast({ title: 'Success', description: `PC "${newPc.name}" has been added.` });
+        
+        setIsAddPcDialogOpen(false);
+        setNewPcName('');
+    } catch (error) {
+        console.error(error);
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not create new PC.' });
+    } finally {
+        setIsAddingPc(false);
+    }
+  };
+
   const PaymentMethodBadge: React.FC<{ method: PaymentMethod | undefined }> = ({ method }) => {
     if (!method) return <span className="text-muted-foreground">-</span>;
   
@@ -303,10 +337,16 @@ export function AdminPcTable({ pcs, setPcs, addAuditLog, onRefresh, isRefreshing
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>PC Status Overview</CardTitle>
-          <Button variant="outline" size="sm" onClick={onRefresh} disabled={isRefreshing}>
-              <RefreshCw className={cn('mr-2 h-4 w-4', isRefreshing && 'animate-spin')} />
-              Refresh
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => setIsAddPcDialogOpen(true)}>
+                <PlusCircle className='mr-2 h-4 w-4' />
+                Add New PC
+            </Button>
+            <Button variant="outline" size="sm" onClick={onRefresh} disabled={isRefreshing}>
+                <RefreshCw className={cn('mr-2 h-4 w-4', isRefreshing && 'animate-spin')} />
+                Refresh
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <Table>
@@ -479,6 +519,38 @@ export function AdminPcTable({ pcs, setPcs, addAuditLog, onRefresh, isRefreshing
               {isSending ? 'Sending...' : 'Send Invoice'}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      <Dialog open={isAddPcDialogOpen} onOpenChange={setIsAddPcDialogOpen}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Add New PC</DialogTitle>
+                <DialogDescription>
+                    Enter the name for the new PC you want to add to the system.
+                </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="new-pc-name" className="text-right">
+                        PC Name
+                    </Label>
+                    <Input
+                        id="new-pc-name"
+                        value={newPcName}
+                        onChange={(e) => setNewPcName(e.target.value)}
+                        className="col-span-3"
+                        placeholder="e.g., PC-13"
+                    />
+                </div>
+            </div>
+            <DialogFooter>
+                <Button variant="outline" onClick={() => setIsAddPcDialogOpen(false)}>Cancel</Button>
+                <Button onClick={handleAddNewPc} disabled={isAddingPc}>
+                    {isAddingPc ? <Loader className="animate-spin mr-2" /> : <PlusCircle className="mr-2" />}
+                    {isAddingPc ? 'Adding...' : 'Add PC'}
+                </Button>
+            </DialogFooter>
         </DialogContent>
       </Dialog>
     </>

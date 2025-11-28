@@ -86,23 +86,24 @@ export async function GET(request: Request) {
   return NextResponse.json(pcs);
 }
 
+// Create a new PC
 export async function POST(request: Request) {
     try {
-      const { id, newName } = await request.json();
+      const { name } = await request.json();
   
-      if (!id || !newName) {
-        return NextResponse.json({ message: 'Missing id or newName' }, { status: 400 });
+      if (!name) {
+        return NextResponse.json({ message: 'Missing name' }, { status: 400 });
       }
+
+      const newPc: PC = {
+        id: String(Date.now()),
+        name: name,
+        status: 'available',
+      };
   
-      const pcIndex = pcs.findIndex(p => p.id === id);
+      pcs.push(newPc);
   
-      if (pcIndex === -1) {
-        return NextResponse.json({ message: 'PC not found' }, { status: 404 });
-      }
-  
-      pcs[pcIndex].name = newName;
-  
-      return NextResponse.json(pcs[pcIndex]);
+      return NextResponse.json(newPc, { status: 201 });
     } catch (error) {
       return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
     }
@@ -110,10 +111,10 @@ export async function POST(request: Request) {
 
 export async function PUT(request: Request) {
     try {
-      const { id, newStatus, duration, user, email, paymentMethod } = await request.json();
+      const { id, newStatus, newName, duration, user, email, paymentMethod } = await request.json();
   
-      if (!id || !newStatus) {
-        return NextResponse.json({ message: 'Missing id or newStatus' }, { status: 400 });
+      if (!id) {
+        return NextResponse.json({ message: 'Missing PC ID' }, { status: 400 });
       }
   
       const pcIndex = pcs.findIndex(p => p.id === id);
@@ -122,11 +123,19 @@ export async function PUT(request: Request) {
         return NextResponse.json({ message: 'PC not found' }, { status: 404 });
       }
 
-      if (!statuses.includes(newStatus)) {
-        return NextResponse.json({ message: 'Invalid status' }, { status: 400 });
+      // Handle name change
+      if (newName) {
+        pcs[pcIndex].name = newName;
       }
-  
-      pcs[pcIndex].status = newStatus;
+
+      // Handle status change
+      if (newStatus) {
+        if (!statuses.includes(newStatus)) {
+            return NextResponse.json({ message: 'Invalid status' }, { status: 400 });
+        }
+        pcs[pcIndex].status = newStatus;
+      }
+
 
       if (newStatus === 'in_use') {
         pcs[pcIndex].session_start = new Date().toISOString();
@@ -143,7 +152,7 @@ export async function PUT(request: Request) {
         pcs[pcIndex].paymentMethod = paymentMethod;
         pcs[pcIndex].session_start = undefined; // Clear start time until approved
       
-      } else if (['available', 'maintenance', 'unavailable'].includes(newStatus)) {
+      } else if (['available', 'maintenance', 'unavailable'].includes(newStatus || '')) {
         pcs[pcIndex].user = undefined;
         pcs[pcIndex].session_start = undefined;
         pcs[pcIndex].session_duration = undefined;
