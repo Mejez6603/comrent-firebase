@@ -71,9 +71,13 @@ function PaymentForm() {
             const pricingRes = await fetch('/api/pricing');
             if (!pricingRes.ok) throw new Error('Failed to fetch pricing');
             const pricingData: PricingTier[] = await pricingRes.json();
-            setPricingTiers(pricingData);
-            if (pricingData.length > 0) {
-                setDuration(pricingData[0].value);
+            
+            // Sort pricing tiers from lowest to highest duration
+            const sortedPricingData = pricingData.sort((a, b) => Number(a.value) - Number(b.value));
+
+            setPricingTiers(sortedPricingData);
+            if (sortedPricingData.length > 0) {
+                setDuration(sortedPricingData[0].value);
             }
 
             // Fetch PC data
