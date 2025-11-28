@@ -106,6 +106,10 @@ export default {
         'pulse-chart': {
             '0%, 100%': { opacity: '1' },
             '50%': { opacity: '0.85' },
+        },
+        'hover-help': {
+            '0%, 100%': { transform: 'translateY(0)' },
+            '50%': { transform: 'translateY(-68px)' },
         }
       },
       animation: {
@@ -113,6 +117,7 @@ export default {
         'accordion-up': 'accordion-up 0.2s ease-out',
         'spin-slow': 'spin-slow 3s linear infinite',
         'pulse-chart': 'pulse-chart 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        'hover-help': 'hover-help 3s ease-in-out infinite',
       },
     },
   },
