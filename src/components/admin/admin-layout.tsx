@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   SidebarProvider,
   Sidebar,
@@ -26,6 +26,13 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
   const [auditLogs, setAuditLogs] = useState<string[]>([]);
   const [pricingTiers, setPricingTiers] = useState<PricingTier[]>([]);
 
+  const addAuditLog = useCallback((log: string) => {
+    const timestamp = new Date().toLocaleString();
+    const newLog = `[${timestamp}] ${log}`;
+    // Prevent duplicate logs
+    setAuditLogs(prev => prev.includes(newLog) ? prev : [newLog, ...prev]);
+  }, []);
+
   useEffect(() => {
     async function fetchPricing() {
       try {
@@ -48,11 +55,6 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
     fetchPricing();
     fetchHistoricalData();
   }, []);
-
-  const addAuditLog = (log: string) => {
-    const timestamp = new Date().toLocaleString();
-    setAuditLogs(prev => [`[${timestamp}] ${log}`, ...prev]);
-  }
 
   const renderContent = () => {
     switch (activeTab) {

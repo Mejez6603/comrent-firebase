@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useEffect, useRef } from 'react';
 import type { PC, PCStatus } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Bell, CircleHelp, Clock, Power, Info, Wrench, Ban, Monitor } from 'lucide-react';
@@ -10,6 +10,7 @@ import { useNotificationSounds } from '@/hooks/use-notification-sounds';
 type AdminNotificationPanelProps = {
   pcs: PC[];
   previousPcs: PC[];
+  addAuditLog: (log: string) => void;
 };
 
 export type Notification = {
@@ -18,6 +19,7 @@ export type Notification = {
   icon: React.ElementType;
   iconClass: string;
   message: React.ReactNode;
+  rawMessage: string;
 };
 
 const iconMap: Record<PCStatus, { icon: React.ElementType; iconClass: string }> = {
@@ -31,7 +33,7 @@ const iconMap: Record<PCStatus, { icon: React.ElementType; iconClass: string }> 
 };
 
 
-export function AdminNotificationPanel({ pcs, previousPcs }: AdminNotificationPanelProps) {
+export function AdminNotificationPanel({ pcs, previousPcs, addAuditLog }: AdminNotificationPanelProps) {
   const notifications = useMemo(() => {
     const newNotifications: Notification[] = [];
     const prevPcsMap = new Map(previousPcs.map(p => [p.id, p]));
@@ -39,11 +41,11 @@ export function AdminNotificationPanel({ pcs, previousPcs }: AdminNotificationPa
     pcs.forEach((pc) => {
         const prevPc = prevPcsMap.get(pc.id);
 
-        // 1. Detect any status change
         if (prevPc && prevPc.status !== pc.status) {
             const config = iconMap[pc.status];
+            const rawMessage = `PC "${pc.name}" status changed from "${prevPc.status.replace(/_/g, ' ')}" to "${pc.status.replace(/_/g, ' ')}".`;
             newNotifications.push({
-                id: `${pc.status}-${pc.id}-${Date.now()}`, // Make ID more unique
+                id: `${pc.id}-${pc.status}-${Date.now()}`,
                 type: pc.status,
                 icon: config.icon,
                 iconClass: config.iconClass,
@@ -52,46 +54,31 @@ export function AdminNotificationPanel({ pcs, previousPcs }: AdminNotificationPa
                         <span className="font-bold">{pc.name}</span> status changed to <span className="font-semibold">{pc.status.replace(/_/g, ' ')}</span>.
                     </span>
                 ),
-            });
-        }
-
-        // 2. Add specific, more descriptive notifications for important states
-        // These can exist alongside the generic status change notification.
-        if (pc.status === 'pending_approval') {
-            newNotifications.push({
-                id: `approval-${pc.id}`,
-                type: 'pending_approval',
-                icon: CircleHelp,
-                iconClass: 'text-yellow-500',
-                message: (
-                    <span>
-                    <span className="font-bold">{pc.name}</span> is waiting for session approval.
-                    </span>
-                ),
-            });
-        }
-        
-        if (pc.status === 'time_up') {
-             newNotifications.push({
-                id: `ended-${pc.id}`,
-                type: 'ended',
-                icon: Clock,
-                iconClass: 'text-destructive',
-                message: (
-                <span>
-                    Session for <span className="font-bold">{pc.name}</span> has ended. Awaiting action.
-                </span>
-                ),
+                rawMessage: rawMessage
             });
         }
     });
 
-    // Remove duplicates that might arise from the logic above, favoring the specific message.
-    const finalNotifications = Array.from(new Map(newNotifications.map(n => [n.id.split('-').slice(0, 2).join('-'), n])).values());
-
-
-    return finalNotifications;
+    const finalNotifications = Array.from(new Map(newNotifications.map(n => [n.id.split('-').slice(0, 3).join('-'), n])).values());
+    
+    return finalNotifications.reverse();
   }, [pcs, previousPcs]);
+
+  const prevNotificationsRef = useRef<Notification[]>([]);
+
+  useEffect(() => {
+    const newNotifications = notifications.filter(
+        n => !prevNotificationsRef.current.some(pn => pn.id === n.id)
+    );
+
+    if (newNotifications.length > 0) {
+        newNotifications.forEach(n => addAuditLog(n.rawMessage));
+    }
+
+    prevNotificationsRef.current = notifications;
+
+  }, [notifications, addAuditLog]);
+
 
   useNotificationSounds(notifications);
 

@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import type { PC, PricingTier } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, RefreshCw } from "lucide-react";
+import { AlertCircle } from "lucide-react";
 import { AdminPcTable } from './admin-pc-table';
 import { AdminNotificationPanel } from './admin-notification-panel';
 
@@ -21,14 +21,21 @@ export function AdminDashboard({ pcs, setPcs, addAuditLog, pricingTiers }: Admin
   const [isOnline, setIsOnline] = useState(true);
   const [previousPcs, setPreviousPcs] = useState<PC[]>([]);
 
-  const fetchStatuses = useCallback(async () => {
+  const fetchStatuses = useCallback(async (isInitialFetch = false) => {
     try {
       const response = await fetch('/api/pc-status');
       if (!response.ok) {
         throw new Error('Network response was not ok');
       }
       const data: PC[] = await response.json();
-      setPreviousPcs(pcs);
+      
+      // On initial fetch, we don't want to trigger notifications for all PCs
+      if (!isInitialFetch) {
+        setPreviousPcs(pcs);
+      } else {
+        setPreviousPcs(data);
+      }
+      
       setPcs(data);
       if (!isOnline) setIsOnline(true);
     } catch (error) {
@@ -47,12 +54,10 @@ export function AdminDashboard({ pcs, setPcs, addAuditLog, pricingTiers }: Admin
 
   useEffect(() => {
     if (pcs.length === 0) {
-        fetchStatuses();
-    } else {
-        setIsLoading(false);
+        fetchStatuses(true);
     }
 
-    const intervalId = setInterval(fetchStatuses, 5000); 
+    const intervalId = setInterval(() => fetchStatuses(false), 5000); 
 
     return () => clearInterval(intervalId);
   }, [fetchStatuses, pcs.length]);
@@ -79,7 +84,11 @@ export function AdminDashboard({ pcs, setPcs, addAuditLog, pricingTiers }: Admin
         </Alert>
       )}
        <div className="mb-6">
-          <AdminNotificationPanel pcs={pcs} previousPcs={previousPcs} />
+          <AdminNotificationPanel 
+            pcs={pcs} 
+            previousPcs={previousPcs} 
+            addAuditLog={addAuditLog} 
+          />
         </div>
       <AdminPcTable 
         pcs={pcs} 
