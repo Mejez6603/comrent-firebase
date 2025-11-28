@@ -1,7 +1,7 @@
 'use client';
 import { useMemo, useState } from 'react';
 import type { PC, PricingTier, PaymentMethod } from '@/lib/types';
-import { BarChart, Users, DollarSign, Clock, BarChart2, Computer, Timer, Calendar as CalendarIcon } from 'lucide-react';
+import { BarChart, Users, DollarSign, Clock, BarChart2, Computer, Timer, Calendar as CalendarIcon, LineChart, TrendingUp, Sun, Moon } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import {
   ChartContainer,
@@ -10,7 +10,9 @@ import {
 } from '@/components/ui/chart';
 import {
   Bar,
+  Line,
   BarChart as RechartsBarChart,
+  LineChart as RechartsLineChart,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -20,7 +22,7 @@ import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { addDays, format, subMonths } from 'date-fns';
+import { addDays, format, subMonths, startOfDay } from 'date-fns';
 import { DateRange } from 'react-day-picker';
 
 type AnalyticsDashboardProps = {
@@ -100,6 +102,33 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
         name,
         value,
     })).sort((a,b) => b.value - a.value);
+    
+    // NEW: Revenue over time
+    const revenueOverTime = filteredSessions.reduce((acc, session) => {
+        if (!session.session_start) return acc;
+        const day = format(startOfDay(new Date(session.session_start)), 'yyyy-MM-dd');
+        const durationInfo = pricingTiers.find(d => d.value === String(session.session_duration));
+        const price = durationInfo?.price || 0;
+        acc[day] = (acc[day] || 0) + price;
+        return acc;
+    }, {} as Record<string, number>);
+
+    const revenueChartData = Object.entries(revenueOverTime)
+        .map(([date, revenue]) => ({ date, revenue }))
+        .sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+    // NEW: Peak hours
+    const peakHours = filteredSessions.reduce((acc, session) => {
+        if (!session.session_start) return acc;
+        const hour = new Date(session.session_start).getHours();
+        acc[hour] = (acc[hour] || 0) + 1;
+        return acc;
+    }, {} as Record<number, number>);
+    
+    const peakHoursChartData = Array.from({length: 24}, (_, i) => ({
+        hour: `${i}:00`,
+        sessions: peakHours[i] || 0
+    }));
 
 
     return { 
@@ -112,6 +141,8 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
         totalMinutes,
         pcUtilizationChartData,
         durationPopularityChartData,
+        revenueChartData,
+        peakHoursChartData,
     };
   }, [pcs, historicalSessions, pricingTiers, date]);
 
@@ -198,9 +229,76 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
                     <p className="text-xs text-muted-foreground">Total time PCs were rented</p>
                 </CardContent>
             </Card>
+        </div>
 
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+             <Card className="col-span-full lg:col-span-4">
+                <CardHeader>
+                    <CardTitle>Revenue Over Time</CardTitle>
+                    <CardDescription>Daily revenue for the selected period.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <ChartContainer config={{}} className="h-[250px] w-full">
+                        <RechartsLineChart data={stats.revenueChartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                            <CartesianGrid vertical={false} />
+                            <XAxis 
+                                dataKey="date" 
+                                stroke="hsl(var(--muted-foreground))" 
+                                fontSize={12} tickLine={false} 
+                                axisLine={false}
+                                tickFormatter={(value) => format(new Date(value), 'MMM d')}
+                            />
+                            <YAxis 
+                                stroke="hsl(var(--muted-foreground))"
+                                fontSize={12} 
+                                tickLine={false} 
+                                axisLine={false}
+                                tickFormatter={(value) => `₱${value}`}
+                            />
+                            <ChartTooltip 
+                                cursor={true} 
+                                content={
+                                    <ChartTooltipContent
+                                        labelFormatter={(label) => format(new Date(label), 'PPP')}
+                                        formatter={(value) => `₱${(value as number).toFixed(2)}`}
+                                    />
+                                } 
+                            />
+                            <Line type="monotone" dataKey="revenue" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />
+                        </RechartsLineChart>
+                    </ChartContainer>
+                </CardContent>
+            </Card>
+            <Card className="col-span-full lg:col-span-3">
+                <CardHeader>
+                    <CardTitle>Peak Hours</CardTitle>
+                    <CardDescription>Number of sessions started per hour.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <ChartContainer config={{}} className="h-[250px] w-full">
+                        <RechartsBarChart data={stats.peakHoursChartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                            <CartesianGrid vertical={false} />
+                            <XAxis 
+                                dataKey="hour" 
+                                stroke="hsl(var(--muted-foreground))" 
+                                fontSize={12} 
+                                tickLine={false} 
+                                axisLine={false} 
+                                tickFormatter={(value, index) => index % 3 === 0 ? value : ''}
+                            />
+                            <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
+                            <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
+                            <Bar dataKey="sessions" fill="hsl(var(--accent))" radius={4} />
+                        </RechartsBarChart>
+                    </ChartContainer>
+                </CardContent>
+            </Card>
+        </div>
+
+
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-2">
             {/* Charts */}
-            <Card className="col-span-1 md:col-span-2">
+            <Card>
                 <CardHeader>
                     <CardTitle>PC Utilization</CardTitle>
                     <CardDescription>Number of sessions per computer.</CardDescription>
@@ -217,7 +315,7 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
                     </ChartContainer>
                 </CardContent>
             </Card>
-            <Card className="col-span-1 md:col-span-2">
+            <Card>
                 <CardHeader>
                     <CardTitle>Session Duration Popularity</CardTitle>
                     <CardDescription>Most frequently chosen rental durations.</CardDescription>
@@ -235,7 +333,7 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
                 </CardContent>
             </Card>
 
-            <Card className="col-span-1 md:col-span-2">
+            <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Payment Methods</CardTitle>
                     <BarChart className="h-4 w-4 text-muted-foreground" />
@@ -252,7 +350,7 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
                     </ChartContainer>
                 </CardContent>
             </Card>
-            <Card className="col-span-1 md:col-span-2">
+            <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Live PC Status Distribution</CardTitle>
                     <BarChart2 className="h-4 w-4 text-muted-foreground" />
@@ -273,3 +371,5 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
     </div>
   );
 }
+
+    
