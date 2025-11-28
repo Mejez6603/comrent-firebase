@@ -26,8 +26,9 @@ import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { PC, PaymentMethod, PricingTier } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { add, formatDistanceToNowStrict } from 'date-fns';
+import { add } from 'date-fns';
 import { Separator } from '@/components/ui/separator';
+import { PaymentHelpPopover } from '@/components/payment-help-popover';
 
 type PaymentStep = 'selection' | 'pending_approval' | 'in_session' | 'session_ended';
 
@@ -396,10 +397,11 @@ function PaymentForm() {
 
 export default function PaymentPage() {
   return (
-    <main className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-background to-secondary p-4">
+    <main className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-background to-secondary p-4 relative">
       <Suspense fallback={<Card className="w-full max-w-lg h-[620px]"><CardContent><div className="animate-pulse rounded-md bg-muted h-full w-full"></div></CardContent></Card>}>
         <PaymentForm />
       </Suspense>
+      <PaymentHelpPopover />
     </main>
   );
 }
