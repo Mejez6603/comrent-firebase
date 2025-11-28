@@ -1,4 +1,3 @@
-'use server';
 /**
  * @fileOverview API route for handling chat messages.
  *
