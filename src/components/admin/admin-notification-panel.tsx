@@ -1,20 +1,15 @@
 'use client';
 
-import { useMemo, useEffect, useRef } from 'react';
 import type { PC, PCStatus } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Bell, CircleHelp, Clock, Power, Info, Wrench, Ban, Monitor } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Bell, Info, X } from 'lucide-react';
 import { ScrollArea } from '../ui/scroll-area';
 import { useNotificationSounds } from '@/hooks/use-notification-sounds';
 
-type AdminNotificationPanelProps = {
-  pcs: PC[];
-  previousPcs: PC[];
-  addAuditLog: (log: string) => void;
-};
-
 export type Notification = {
   id: string;
+  pc: PC;
   type: PCStatus | 'ended' | 'session_ending';
   icon: React.ElementType;
   iconClass: string;
@@ -22,64 +17,14 @@ export type Notification = {
   rawMessage: string;
 };
 
-const iconMap: Record<PCStatus, { icon: React.ElementType; iconClass: string }> = {
-    available: { icon: Power, iconClass: 'text-green-500' },
-    in_use: { icon: Monitor, iconClass: 'text-blue-500' },
-    pending_payment: { icon: Clock, iconClass: 'text-orange-500' },
-    pending_approval: { icon: CircleHelp, iconClass: 'text-yellow-500' },
-    maintenance: { icon: Wrench, iconClass: 'text-gray-500' },
-    unavailable: { icon: Ban, iconClass: 'text-red-500' },
-    time_up: { icon: Clock, iconClass: 'text-destructive' },
+type AdminNotificationPanelProps = {
+  notifications: Notification[];
+  dismissNotification: (id: string) => void;
 };
 
 
-export function AdminNotificationPanel({ pcs, previousPcs, addAuditLog }: AdminNotificationPanelProps) {
-  const notifications = useMemo(() => {
-    const newNotifications: Notification[] = [];
-    const prevPcsMap = new Map(previousPcs.map(p => [p.id, p]));
-
-    pcs.forEach((pc) => {
-        const prevPc = prevPcsMap.get(pc.id);
-
-        if (prevPc && prevPc.status !== pc.status) {
-            const config = iconMap[pc.status];
-            const rawMessage = `PC "${pc.name}" status changed from "${prevPc.status.replace(/_/g, ' ')}" to "${pc.status.replace(/_/g, ' ')}".`;
-            newNotifications.push({
-                id: `${pc.id}-${pc.status}-${Date.now()}`,
-                type: pc.status,
-                icon: config.icon,
-                iconClass: config.iconClass,
-                message: (
-                    <span>
-                        <span className="font-bold">{pc.name}</span> status changed to <span className="font-semibold">{pc.status.replace(/_/g, ' ')}</span>.
-                    </span>
-                ),
-                rawMessage: rawMessage
-            });
-        }
-    });
-
-    const finalNotifications = Array.from(new Map(newNotifications.map(n => [n.id.split('-').slice(0, 3).join('-'), n])).values());
-    
-    return finalNotifications.reverse();
-  }, [pcs, previousPcs]);
-
-  const prevNotificationsRef = useRef<Notification[]>([]);
-
-  useEffect(() => {
-    const newNotifications = notifications.filter(
-        n => !prevNotificationsRef.current.some(pn => pn.id === n.id)
-    );
-
-    if (newNotifications.length > 0) {
-        newNotifications.forEach(n => addAuditLog(n.rawMessage));
-    }
-
-    prevNotificationsRef.current = notifications;
-
-  }, [notifications, addAuditLog]);
-
-
+export function AdminNotificationPanel({ notifications, dismissNotification }: AdminNotificationPanelProps) {
+  
   useNotificationSounds(notifications);
 
   return (
@@ -98,9 +43,19 @@ export function AdminNotificationPanel({ pcs, previousPcs, addAuditLog }: AdminN
               {notifications.map((notification) => {
                 const Icon = notification.icon;
                 return (
-                  <div key={notification.id} className="flex items-start">
-                    <Icon className={`mr-3 mt-1 h-4 w-4 shrink-0 ${notification.iconClass}`} />
-                    <div className="text-sm text-muted-foreground">{notification.message}</div>
+                  <div key={notification.id} className="flex items-start justify-between group">
+                    <div className="flex items-start">
+                        <Icon className={`mr-3 mt-1 h-4 w-4 shrink-0 ${notification.iconClass}`} />
+                        <div className="text-sm text-muted-foreground">{notification.message}</div>
+                    </div>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-6 w-6 opacity-0 group-hover:opacity-100"
+                      onClick={() => dismissNotification(notification.id)}
+                    >
+                        <X className="h-4 w-4"/>
+                    </Button>
                   </div>
                 );
               })}

@@ -18,6 +18,7 @@ import { AnalyticsDashboard } from './analytics-dashboard';
 import { AuditLog } from './audit-log';
 import { PricingManagement } from './pricing-management';
 import { PC, PricingTier } from '@/lib/types';
+import type { Notification } from '@/components/admin/admin-notification-panel';
 
 export function AdminLayout({ children }: { children: React.ReactNode }) {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -25,13 +26,39 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
   const [historicalSessions, setHistoricalSessions] = useState<PC[]>([]);
   const [auditLogs, setAuditLogs] = useState<string[]>([]);
   const [pricingTiers, setPricingTiers] = useState<PricingTier[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
 
   const addAuditLog = useCallback((log: string) => {
     const timestamp = new Date().toLocaleString();
     const newLog = `[${timestamp}] ${log}`;
-    // Prevent duplicate logs
-    setAuditLogs(prev => prev.includes(newLog) ? prev : [newLog, ...prev]);
+    // Prevent duplicate logs in a short time frame
+    setAuditLogs(prev => {
+        if(prev.some(p => p.endsWith(log))) return prev;
+        return [newLog, ...prev];
+    });
   }, []);
+
+  const addNotification = useCallback((notification: Omit<Notification, 'id'>) => {
+    const newNotification: Notification = {
+        ...notification,
+        id: `${notification.pc.id}-${notification.type}-${Date.now()}`
+    };
+    setNotifications(prev => {
+        // Avoid duplicate notifications for the same event
+        const isDuplicate = prev.some(n => 
+            n.pc.id === newNotification.pc.id &&
+            n.type === newNotification.type &&
+            n.rawMessage === newNotification.rawMessage
+        );
+        if (isDuplicate) return prev;
+        return [newNotification, ...prev];
+    });
+    addAuditLog(notification.rawMessage);
+  }, [addAuditLog]);
+
+  const dismissNotification = (notificationId: string) => {
+    setNotifications(prev => prev.filter(n => n.id !== notificationId));
+  }
 
   useEffect(() => {
     async function fetchPricing() {
@@ -66,7 +93,17 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
         return <PricingManagement pricingTiers={pricingTiers} setPricingTiers={setPricingTiers} addAuditLog={addAuditLog} />;
       case 'dashboard':
       default:
-        return <AdminDashboard pcs={pcs} setPcs={setPcs} addAuditLog={addAuditLog} pricingTiers={pricingTiers} />;
+        return (
+            <AdminDashboard 
+                pcs={pcs} 
+                setPcs={setPcs} 
+                addAuditLog={addAuditLog} 
+                pricingTiers={pricingTiers}
+                notifications={notifications}
+                addNotification={addNotification}
+                dismissNotification={dismissNotification}
+            />
+        );
     }
   };
 

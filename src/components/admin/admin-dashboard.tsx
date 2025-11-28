@@ -1,25 +1,38 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import type { PC, PricingTier } from '@/lib/types';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import type { PC, PricingTier, PCStatus } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, CircleHelp, Clock, Power, Info, Wrench, Ban, Monitor } from "lucide-react";
 import { AdminPcTable } from './admin-pc-table';
-import { AdminNotificationPanel } from './admin-notification-panel';
+import { AdminNotificationPanel, type Notification } from './admin-notification-panel';
 
 type AdminDashboardProps = {
     pcs: PC[];
     setPcs: React.Dispatch<React.SetStateAction<PC[]>>;
     addAuditLog: (log: string) => void;
     pricingTiers: PricingTier[];
+    notifications: Notification[];
+    addNotification: (notification: Omit<Notification, 'id'>) => void;
+    dismissNotification: (id: string) => void;
 }
 
-export function AdminDashboard({ pcs, setPcs, addAuditLog, pricingTiers }: AdminDashboardProps) {
+const iconMap: Record<PCStatus, { icon: React.ElementType; iconClass: string }> = {
+    available: { icon: Power, iconClass: 'text-green-500' },
+    in_use: { icon: Monitor, iconClass: 'text-blue-500' },
+    pending_payment: { icon: Clock, iconClass: 'text-orange-500' },
+    pending_approval: { icon: CircleHelp, iconClass: 'text-yellow-500' },
+    maintenance: { icon: Wrench, iconClass: 'text-gray-500' },
+    unavailable: { icon: Ban, iconClass: 'text-red-500' },
+    time_up: { icon: Clock, iconClass: 'text-destructive' },
+};
+
+export function AdminDashboard({ pcs, setPcs, addAuditLog, pricingTiers, notifications, addNotification, dismissNotification }: AdminDashboardProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
-  const [previousPcs, setPreviousPcs] = useState<PC[]>([]);
+  const previousPcsRef = useRef<Map<string, PC>>(new Map());
 
   const fetchStatuses = useCallback(async (isInitialFetch = false) => {
     try {
@@ -29,11 +42,29 @@ export function AdminDashboard({ pcs, setPcs, addAuditLog, pricingTiers }: Admin
       }
       const data: PC[] = await response.json();
       
-      // On initial fetch, we don't want to trigger notifications for all PCs
-      if (!isInitialFetch) {
-        setPreviousPcs(pcs);
+      if (isInitialFetch) {
+        previousPcsRef.current = new Map(data.map(pc => [pc.id, pc]));
       } else {
-        setPreviousPcs(data);
+        data.forEach(pc => {
+          const prevPc = previousPcsRef.current.get(pc.id);
+          if (prevPc && prevPc.status !== pc.status) {
+            const config = iconMap[pc.status];
+            const rawMessage = `PC "${pc.name}" status changed from "${prevPc.status.replace(/_/g, ' ')}" to "${pc.status.replace(/_/g, ' ')}".`;
+            addNotification({
+                pc,
+                type: pc.status,
+                icon: config.icon,
+                iconClass: config.iconClass,
+                message: (
+                    <span>
+                        <span className="font-bold">{pc.name}</span> status changed to <span className="font-semibold">{pc.status.replace(/_/g, ' ')}</span>.
+                    </span>
+                ),
+                rawMessage: rawMessage
+            });
+          }
+        });
+        previousPcsRef.current = new Map(data.map(pc => [pc.id, pc]));
       }
       
       setPcs(data);
@@ -45,7 +76,7 @@ export function AdminDashboard({ pcs, setPcs, addAuditLog, pricingTiers }: Admin
       if(isLoading) setIsLoading(false);
       if(isRefreshing) setIsRefreshing(false);
     }
-  }, [isOnline, isLoading, isRefreshing, setPcs, pcs]);
+  }, [isOnline, isLoading, isRefreshing, setPcs, addNotification]);
 
   const handleRefresh = () => {
     setIsRefreshing(true);
@@ -85,9 +116,8 @@ export function AdminDashboard({ pcs, setPcs, addAuditLog, pricingTiers }: Admin
       )}
        <div className="mb-6">
           <AdminNotificationPanel 
-            pcs={pcs} 
-            previousPcs={previousPcs} 
-            addAuditLog={addAuditLog} 
+            notifications={notifications} 
+            dismissNotification={dismissNotification}
           />
         </div>
       <AdminPcTable 
