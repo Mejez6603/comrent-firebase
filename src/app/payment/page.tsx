@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { Suspense, useState, useMemo, useEffect, useCallback } from 'react';
@@ -170,7 +171,7 @@ function PaymentForm() {
 
 
   const updateTimer = useCallback(() => {
-      if (!sessionEndTime) return;
+      if (!sessionEndTime) return true; // Timer isn't set up yet, keep running
       
       const now = new Date();
       const endTime = new Date(sessionEndTime);
@@ -216,19 +217,25 @@ function PaymentForm() {
       if (!isRunning) {
         clearInterval(timerId);
         try {
-            await fetch('/api/pc-status', {
+            const response = await fetch('/api/pc-status', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id: pc.id, newStatus: 'time_up' })
             });
+            if (response.ok) {
+                const updatedPc = await response.json();
+                setPc(updatedPc); // This will trigger the other useEffect to change the step
+            } else {
+                 throw new Error("Failed to update status to time_up");
+            }
         } catch (error) {
-            console.error("Failed to update status to time_up", error);
+            console.error(error);
         }
       }
     }, 1000);
 
     return () => clearInterval(timerId);
-  }, [step, sessionEndTime, pc, updateTimer]);
+  }, [step, sessionEndTime, pc, updateTimer, setPc]);
 
 
   const handlePaymentMethodSelect = (method: PaymentMethod) => {
