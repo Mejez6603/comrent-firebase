@@ -34,6 +34,7 @@ import { PaymentHelpPopover } from '@/components/payment-help-popover';
 import { useAlarm } from '@/hooks/use-alarm';
 import { SessionEndedDialog } from '@/components/session-ended-dialog';
 import { ChatProvider, useChat } from '@/hooks/use-chat';
+import { ChatButton } from '@/components/chat-button';
 
 type PaymentStep = 'selection' | 'pending_approval' | 'in_session' | 'session_ended';
 
@@ -126,44 +127,56 @@ function PaymentForm() {
 
   useEffect(() => {
     if (!pc) return;
-
+  
     const storedUserDetailsRaw = localStorage.getItem(`session-details-${pc.name}`);
     const storedUserDetails = storedUserDetailsRaw ? JSON.parse(storedUserDetailsRaw) : null;
-    
+  
     let newStep: PaymentStep | null = null;
     let newSessionEndTime: Date | null = null;
-
+  
     if (pc.status === 'in_use' && pc.session_start && pc.session_duration) {
-        if (storedUserDetails && (storedUserDetails.user === pc.user || storedUserDetails.user === '') && storedUserDetails.duration === pc.session_duration) {
-            newStep = 'in_session';
-            const startTime = new Date(pc.session_start);
-            newSessionEndTime = add(startTime, { minutes: pc.session_duration });
-        }
+      if (
+        storedUserDetails &&
+        (storedUserDetails.user === pc.user || storedUserDetails.user === '') &&
+        storedUserDetails.duration === pc.session_duration
+      ) {
+        newStep = 'in_session';
+        const startTime = new Date(pc.session_start);
+        newSessionEndTime = add(startTime, { minutes: pc.session_duration });
+      }
     } else if (pc.status === 'time_up') {
-        newStep = 'session_ended';
-        setTimeRemaining('00:00:00');
-        startAlarm();
-        setIsSessionEndModalOpen(true);
+      newStep = 'session_ended';
+      setTimeRemaining('00:00:00');
+      startAlarm();
+      setIsSessionEndModalOpen(true);
     } else if (pc.status === 'pending_approval') {
-        if (storedUserDetails && (storedUserDetails.user === pc.user || storedUserDetails.user === '') && storedUserDetails.duration === pc.session_duration) {
-            newStep = 'pending_approval';
-        }
+      if (
+        storedUserDetails &&
+        (storedUserDetails.user === pc.user || storedUserDetails.user === '') &&
+        storedUserDetails.duration === pc.session_duration
+      ) {
+        newStep = 'pending_approval';
+      }
     } else if (pc.status === 'pending_payment') {
-        newStep = 'selection';
+      newStep = 'selection';
     } else if (pc.status === 'available' && ['pending_approval', 'pending_payment'].includes(step)) {
-        localStorage.removeItem(`session-details-${pc.name}`);
-        toast({ title: "Request Cancelled", description: "Your rental request was cancelled by an admin." });
-        router.push('/');
-        return;
+      localStorage.removeItem(`session-details-${pc.name}`);
+      toast({ title: 'Request Cancelled', description: 'Your rental request was cancelled by an admin.' });
+      router.push('/');
+      return;
     }
-
+  
     if (newStep && newStep !== step) {
-        setStep(newStep);
+      setStep(newStep);
     }
-    if (newSessionEndTime && (!sessionEndTime || newSessionEndTime.getTime() !== sessionEndTime.getTime())) {
+  
+    if (newSessionEndTime) {
+      // Check if sessionEndTime is null or different before setting
+      if (!sessionEndTime || newSessionEndTime.getTime() !== sessionEndTime.getTime()) {
         setSessionEndTime(newSessionEndTime);
+      }
     }
-  }, [pc, step, sessionEndTime, startAlarm, router, toast]);
+  }, [pc, step, router, toast, startAlarm, sessionEndTime]);
 
 
   useEffect(() => {
@@ -525,5 +538,3 @@ export default function PaymentPage() {
     </main>
   );
 }
-
-    
