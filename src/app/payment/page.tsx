@@ -104,10 +104,10 @@ function PaymentForm() {
       // Check if the session belongs to the current user before changing the step
       if (storedUserDetails && storedUserDetails.user === pc.user && storedUserDetails.duration === pc.session_duration) {
         if (step !== 'in_session') {
-          setStep('in_session');
           const startTime = new Date(pc.session_start);
           const endTime = add(startTime, { minutes: pc.session_duration });
           setSessionEndTime(endTime);
+          setStep('in_session');
         }
       }
     } else if (pc.status === 'time_up' && step !== 'session_ended') {
