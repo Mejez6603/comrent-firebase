@@ -12,7 +12,7 @@ import {
   SidebarFooter,
   SidebarInset,
 } from '@/components/ui/sidebar';
-import { Home, LineChart, List, User, Tag } from 'lucide-react';
+import { Home, LineChart, List, User, Tag, Mail } from 'lucide-react';
 import { AdminDashboard } from './admin-dashboard';
 import { AnalyticsDashboard } from './analytics-dashboard';
 import { AuditLog } from './audit-log';
@@ -20,6 +20,7 @@ import { PricingManagement } from './pricing-management';
 import { PC, PricingTier } from '@/lib/types';
 import type { Notification } from '@/components/admin/admin-notification-panel';
 import { AdminChat } from './admin-chat';
+import { EmailInvoiceManagement } from './email-invoice-management';
 
 export function AdminLayout({ children }: { children: React.ReactNode }) {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -97,6 +98,8 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
         return <AuditLog logs={auditLogs} />;
       case 'pricing':
         return <PricingManagement pricingTiers={pricingTiers} setPricingTiers={setPricingTiers} addAuditLog={addAuditLog} />;
+      case 'email-invoice':
+        return <EmailInvoiceManagement pcs={pcs} pricingTiers={pricingTiers} addAuditLog={addAuditLog} />;
       case 'dashboard':
       default:
         return (
@@ -154,6 +157,16 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
               >
                 <Tag />
                 <span>Pricing</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                onClick={() => setActiveTab('email-invoice')}
+                isActive={activeTab === 'email-invoice'}
+                tooltip="Email Invoices"
+              >
+                <Mail />
+                <span>Email Invoices</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
