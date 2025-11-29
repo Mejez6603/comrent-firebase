@@ -409,7 +409,11 @@ export function AdminPcTable({ pcs, setPcs, addAuditLog, onRefresh, isRefreshing
                                 const statusConf = statusConfig[status];
                                 const StatusIcon = statusConf.icon;
                                 const isPendingApproval = pc.status === 'pending_approval';
-                                const isDisabled = pc.status === status || (isPendingApproval && status !== 'in_use' && status !== 'available');
+                                const isInUse = pc.status === 'in_use';
+
+                                const isDisabled = pc.status === status || 
+                                    (isPendingApproval && status !== 'in_use' && status !== 'available') ||
+                                    (isInUse && status !== 'time_up');
 
                                 return (
                                     <DropdownMenuItem key={status} onClick={() => handleStatusChange(pc.id, status)} disabled={isDisabled}>
