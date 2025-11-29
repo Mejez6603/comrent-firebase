@@ -94,7 +94,8 @@ const sendGeneratedEmailFlow = ai.defineFlow(
   async (input) => {
     try {
       if (!process.env.RESEND_API_KEY) {
-        throw new Error('RESEND_API_KEY is not configured in environment variables.');
+        console.error('Resend API key is missing.');
+        return { success: false, message: 'Server configuration error: Email service is not set up.' };
       }
       const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -108,14 +109,14 @@ const sendGeneratedEmailFlow = ai.defineFlow(
 
       if (error) {
         console.error('Resend API Error:', error);
-        return { success: false, message: error.message };
+        return { success: false, message: `Failed to send email: ${error.message}` };
       }
 
       console.log('INFO: Email sent successfully:', data);
       return { success: true, message: `Email sent successfully to ${input.customerEmail}` };
     } catch (e: any) {
       console.error('Failed to send email:', e);
-      return { success: false, message: e.message || 'An unknown error occurred.' };
+      return { success: false, message: e.message || 'An unknown error occurred while sending the email.' };
     }
   }
 );
