@@ -254,7 +254,7 @@ export function AdminPcTable({ pcs, setPcs, addAuditLog, onRefresh, isRefreshing
         setInvoiceContent(content);
     } catch (error) {
         console.error("Failed to generate invoice content:", error);
-        toast({ variant: 'destructive', title: 'AI Error', description: 'Could not generate email content.' });
+        toast({ variant: 'destructive', title: 'Templating Error', description: 'Could not populate email content from template.' });
         setInvoicePc(null);
     } finally {
         setIsGenerating(false);
@@ -277,7 +277,7 @@ export function AdminPcTable({ pcs, setPcs, addAuditLog, onRefresh, isRefreshing
             addAuditLog(`Sent invoice to ${invoicePc.email} for PC "${invoicePc.name}".`);
             toast({ title: 'Invoice Sent!', description: `Email has been sent to ${invoicePc.email}.`});
         } else {
-            throw new Error(result.message || 'Flow returned success: false');
+            throw new Error(result?.message || 'Flow returned success: false');
         }
     } catch(error: any) {
         console.error('Failed to send invoice email:', error);

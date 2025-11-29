@@ -2,7 +2,7 @@
 /**
  * @fileOverview An AI flow to generate and send an invoice email.
  *
- * - generateInvoiceEmail - Generates the content for an invoice email using a template.
+ * - generateInvoiceEmail - Populates an email template with session data.
  * - sendGeneratedEmail - Sends a pre-generated email.
  * - GenerateInvoiceEmailInput - The input type for the generation function.
  * - GenerateInvoiceEmailOutput - The return type for the generation function.
@@ -13,7 +13,7 @@ import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 import { Resend } from 'resend';
 
-// Schemas for generating the email content
+// Schemas for populating the email template
 const GenerateInvoiceEmailInputSchema = z.object({
   customerName: z.string().describe('The name of the customer.'),
   pcName: z.string().describe('The name of the PC that was rented.'),
@@ -95,6 +95,7 @@ const sendGeneratedEmailFlow = ai.defineFlow(
     try {
       if (!process.env.RESEND_API_KEY) {
         console.error('Resend API key is missing.');
+        // This return is crucial to prevent the "undefined" error.
         return { success: false, message: 'Server configuration error: Email service is not set up.' };
       }
       const resend = new Resend(process.env.RESEND_API_KEY);
@@ -116,6 +117,7 @@ const sendGeneratedEmailFlow = ai.defineFlow(
       return { success: true, message: `Email sent successfully to ${input.customerEmail}` };
     } catch (e: any) {
       console.error('Failed to send email:', e);
+      // This return is crucial to prevent the "undefined" error.
       return { success: false, message: e.message || 'An unknown error occurred while sending the email.' };
     }
   }
