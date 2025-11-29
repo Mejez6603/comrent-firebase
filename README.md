@@ -2,12 +2,6 @@
 
 ComRent is a full-stack application designed to streamline the management of a computer rental center. It provides a real-time dashboard for monitoring PC statuses, a user-facing payment and session management interface, and a comprehensive admin panel for analytics, configuration, and control.
 
-![](images/image0001.png)
-![](images/image0002.png)
-![](images/image0003.png)
-![](images/image0004.png)
-![](images/image0005.png)
-
 ## Description
 
 This project simulates a real-world scenario for a PC rental business, allowing users to select available computers, make payments, and manage their sessions. Admins have a powerful backend interface to oversee operations, track revenue, manage pricing, and assist users. The application is built with a modern tech stack, prioritizing a responsive user experience and robust administrative control.
@@ -31,7 +25,7 @@ This project simulates a real-world scenario for a PC rental business, allowing 
 -   **Language**: TypeScript
 -   **Styling**: Tailwind CSS
 -   **UI Components**: ShadCN UI, Lucide Icons
---   **Charting**: Recharts
+-   **Charting**: Recharts
 -   **State Management**: React Hooks (useState, useEffect, useContext)
 -   **AI Integration**: Genkit (for email generation flows)
 -   **Email Sending**: Resend
@@ -49,8 +43,8 @@ To get a local copy up and running, follow these simple steps.
 
 1.  **Clone the repository:**
     ```bash
-    git clone https://github.com/your-username/comrent.git
-    cd comrent
+    git clone <your-repository-url>
+    cd comrent-firebase
     ```
 
 2.  **Install dependencies:**
@@ -59,7 +53,7 @@ To get a local copy up and running, follow these simple steps.
     ```
 
 3.  **Set up environment variables:**
-    Create a `.env` file in the root of the project and add the necessary API keys. The Resend API key is required for sending emails.
+    Create a `.env` file in the root of the project and add the necessary API keys.
 
     ```.env
     RESEND_API_KEY=your_resend_api_key
@@ -71,6 +65,12 @@ To get a local copy up and running, follow these simple steps.
     npm run dev
     ```
     Open [http://localhost:9002](http://localhost:9002) to view it in your browser.
+
+## Deployment
+
+This application is configured for deployment on platforms like [Railway](https://railway.app/) or [Vercel](https://vercel.com/).
+
+The `package.json` `start` script is set to `next start -p $PORT`, which allows the hosting provider to dynamically assign the port for the application to run on. Simply connect your GitHub repository to your hosting provider of choice, and it should build and deploy automatically.
 
 ## Usage Guide
 
@@ -108,18 +108,6 @@ The project is organized following Next.js App Router conventions.
     └── genkit.ts
 ```
 
-## Future Enhancements
-
--   Implement user authentication for persistent admin sessions.
--   Integrate a real database (like Firebase Firestore or a SQL database) to replace the in-memory data store.
--   Add more advanced analytics and exportable reports.
--   Allow users to extend their sessions from the payment page.
-
-## System Requirements
-
--   Node.js 18.x or later
--   A modern web browser (Chrome, Firefox, Safari, Edge)
-
 ## Troubleshooting
 
 -   **Error "pcName is required"**: This can happen if you navigate directly to the `/payment` page without selecting a PC first. Always start from the main page.
@@ -134,4 +122,4 @@ The project is organized following Next.js App Router conventions.
 
 ## License
 
-This project is open-source and available under the [MIT License](LICENSE.md).
+This project is open-source and available under the MIT License.
