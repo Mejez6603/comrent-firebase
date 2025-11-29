@@ -61,7 +61,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
   } from "@/components/ui/dropdown-menu";
-import { generateInvoiceEmail, sendGeneratedEmail, type GenerateInvoiceEmailOutput } from '@/ai/flows/send-invoice-email';
+import { sendGeneratedEmail, type GenerateInvoiceEmailOutput } from '@/ai/flows/send-invoice-email';
 import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 
@@ -224,6 +224,13 @@ export function AdminPcTable({ pcs, setPcs, addAuditLog, onRefresh, isRefreshing
       }
   };
 
+  // Simple string replacement function to populate the template
+  const populateTemplate = (template: string, data: Record<string, string>): string => {
+    return template.replace(/\{\{\s*(\w+)\s*\}\}/g, (match, key) => {
+        return data[key] || match;
+    });
+  };
+
   const handleOpenInvoiceDialog = async (pc: PC) => {
     if (!pc.email || !pc.session_duration || !pc.user) return;
     
@@ -242,16 +249,22 @@ export function AdminPcTable({ pcs, setPcs, addAuditLog, onRefresh, isRefreshing
         if (!templateResponse.ok) throw new Error('Failed to fetch email template.');
         const template: { subject: string, body: string } = await templateResponse.json();
 
-        const content = await generateInvoiceEmail({
+        const templateData = {
             customerName: pc.user,
             pcName: pc.name,
             duration: durationInfo.label,
             amount: `₱${durationInfo.price.toFixed(2)}`,
             companyName: 'ComRent',
-            subjectTemplate: template.subject,
-            bodyTemplate: template.body
+        };
+
+        const finalSubject = populateTemplate(template.subject, templateData);
+        const finalBody = populateTemplate(template.body, templateData);
+
+        setInvoiceContent({
+            emailSubject: finalSubject,
+            emailBody: finalBody,
         });
-        setInvoiceContent(content);
+
     } catch (error) {
         console.error("Failed to generate invoice content:", error);
         toast({ variant: 'destructive', title: 'Templating Error', description: 'Could not populate email content from template.' });
