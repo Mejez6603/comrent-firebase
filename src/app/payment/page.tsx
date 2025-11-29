@@ -94,38 +94,44 @@ function PaymentForm() {
   }, [pcName, router, toast]);
 
     useEffect(() => {
-    if (!pc) return;
+        if (!pc) return;
 
-    // Retrieve the current user's session details from localStorage
-    const storedUserDetailsRaw = localStorage.getItem(`session-details-${pc.name}`);
-    const storedUserDetails = storedUserDetailsRaw ? JSON.parse(storedUserDetailsRaw) : null;
+        const storedUserDetailsRaw = localStorage.getItem(`session-details-${pc.name}`);
+        const storedUserDetails = storedUserDetailsRaw ? JSON.parse(storedUserDetailsRaw) : null;
 
-    if (pc.status === 'in_use' && pc.session_start && pc.session_duration) {
-      // Check if the session belongs to the current user before changing the step
-      if (storedUserDetails && storedUserDetails.user === pc.user && storedUserDetails.duration === pc.session_duration) {
-        if (step !== 'in_session') {
-          const startTime = new Date(pc.session_start);
-          const endTime = add(startTime, { minutes: pc.session_duration });
-          setSessionEndTime(endTime);
-          setStep('in_session');
+        const currentStep = step;
+
+        let newStep = currentStep;
+
+        if (pc.status === 'in_use' && pc.session_start && pc.session_duration) {
+             // Check if the session belongs to the current user before changing the step
+            if (storedUserDetails && storedUserDetails.user === pc.user && storedUserDetails.duration === pc.session_duration) {
+                newStep = 'in_session';
+                const startTime = new Date(pc.session_start);
+                const endTime = add(startTime, { minutes: pc.session_duration });
+                setSessionEndTime(endTime);
+            }
+        } else if (pc.status === 'time_up') {
+            newStep = 'session_ended';
+            setTimeRemaining('00:00:00');
+            startAlarm();
+            setIsSessionEndModalOpen(true);
+        } else if (pc.status === 'pending_approval') {
+             // Also check if the pending approval belongs to the current user
+            if (storedUserDetails && storedUserDetails.user === pc.user && storedUserDetails.duration === pc.session_duration) {
+                newStep = 'pending_approval';
+            }
+        } else if (pc.status === 'available' && (currentStep === 'pending_approval' || currentStep === 'session_ended')) {
+            // If the PC becomes available, clear stored details and redirect
+            localStorage.removeItem(`session-details-${pc.name}`);
+            router.push('/');
+            return;
         }
-      }
-    } else if (pc.status === 'time_up' && step !== 'session_ended') {
-      setStep('session_ended');
-      setTimeRemaining('00:00:00');
-      startAlarm();
-      setIsSessionEndModalOpen(true);
-    } else if (pc.status === 'pending_approval' && step !== 'pending_approval') {
-      // Also check if the pending approval belongs to the current user
-      if (storedUserDetails && storedUserDetails.user === pc.user && storedUserDetails.duration === pc.session_duration) {
-        setStep('pending_approval');
-      }
-    } else if (pc.status === 'available' && (step === 'pending_approval' || step === 'session_ended')) {
-      // If the PC becomes available, clear stored details and redirect
-      localStorage.removeItem(`session-details-${pc.name}`);
-      router.push('/');
-    }
-  }, [pc, step, startAlarm, router]);
+
+        if (newStep !== currentStep) {
+            setStep(newStep);
+        }
+    }, [pc, step, startAlarm, router]);
 
 
   useEffect(() => {

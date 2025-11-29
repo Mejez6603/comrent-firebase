@@ -142,7 +142,8 @@ export async function PUT(request: Request) {
         // If duration and user are not provided, it means admin is approving
         // so we should keep the existing ones if available.
         pcs[pcIndex].session_duration = duration || pcs[pcIndex].session_duration;
-        pcs[pcIndex].user = user || pcs[pcIndex].user || `user_${Math.random().toString(36).substring(7)}`;
+        // Respect the user value passed, even if it's an empty string. Only generate if undefined.
+        pcs[pcIndex].user = user !== undefined ? user : (pcs[pcIndex].user || `user_${Math.random().toString(36).substring(7)}`);
 
       } else if (newStatus === 'pending_approval') {
         // When a user sends a payment request
