@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { Suspense, useState, useMemo, useEffect, useCallback } from 'react';
@@ -134,10 +133,13 @@ function PaymentForm() {
     switch(pc.status) {
         case 'in_use':
             if (pc.session_start && pc.session_duration && storedUserDetails) {
-                setStep('in_session');
                 const startTime = new Date(pc.session_start);
                 const endTime = add(startTime, { minutes: pc.session_duration });
-                setSessionEndTime(endTime);
+                
+                if (step !== 'in_session' || (sessionEndTime && endTime.getTime() !== sessionEndTime.getTime())) {
+                    setStep('in_session');
+                    setSessionEndTime(endTime);
+                }
             }
             break;
         case 'time_up':
@@ -164,31 +166,19 @@ function PaymentForm() {
             }
             break;
     }
-  }, [pc, router, toast, startAlarm, step]);
+  }, [pc, router, toast, startAlarm, step, sessionEndTime]);
 
 
-  useEffect(() => {
-    if (step !== 'in_session' || !sessionEndTime || !pc) return;
-
-    const timerId = setInterval(async () => {
+  const updateTimer = useCallback(() => {
+      if (!sessionEndTime) return;
+      
       const now = new Date();
       const endTime = new Date(sessionEndTime);
       const totalSeconds = Math.floor((endTime.getTime() - now.getTime()) / 1000);
 
       if (totalSeconds <= 0) {
         setTimeRemaining('00:00:00');
-        clearInterval(timerId);
-        
-        try {
-            await fetch('/api/pc-status', {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: pc.id, newStatus: 'time_up' })
-            });
-        } catch (error) {
-            console.error("Failed to update status to time_up", error);
-        }
-        return;
+        return false; // Indicates timer has finished
       }
       
       const hours = Math.floor(totalSeconds / 3600);
@@ -212,11 +202,33 @@ function PaymentForm() {
         toast({ variant: "destructive", title: "1 Minute Remaining!", description: "Your session will end in one minute."});
         setNotified(prev => ({...prev, 1: true}));
       }
+      return true; // Indicates timer is still running
+  }, [sessionEndTime, notified, toast]);
 
+  useEffect(() => {
+    if (step !== 'in_session' || !sessionEndTime || !pc) return;
+
+    // Set initial timer value immediately
+    updateTimer();
+    
+    const timerId = setInterval(async () => {
+      const isRunning = updateTimer();
+      if (!isRunning) {
+        clearInterval(timerId);
+        try {
+            await fetch('/api/pc-status', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: pc.id, newStatus: 'time_up' })
+            });
+        } catch (error) {
+            console.error("Failed to update status to time_up", error);
+        }
+      }
     }, 1000);
 
     return () => clearInterval(timerId);
-  }, [step, sessionEndTime, toast, notified, pc]);
+  }, [step, sessionEndTime, pc, updateTimer]);
 
 
   const handlePaymentMethodSelect = (method: PaymentMethod) => {
