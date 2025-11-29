@@ -39,10 +39,11 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  const addNotification = useCallback((notification: Omit<Notification, 'id'>) => {
+  const addNotification = useCallback((notification: Omit<Notification, 'id' | 'timestamp'>) => {
     const newNotification: Notification = {
         ...notification,
-        id: `${notification.pc.id}-${notification.type}-${Date.now()}`
+        id: `${notification.pc.id}-${notification.type}-${Date.now()}`,
+        timestamp: new Date(),
     };
     setNotifications(prev => {
         // Avoid duplicate notifications for the same event

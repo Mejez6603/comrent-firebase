@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Bell, Info, X } from 'lucide-react';
 import { ScrollArea } from '../ui/scroll-area';
 import { useNotificationSounds } from '@/hooks/use-notification-sounds';
+import { format, formatDistanceToNow } from 'date-fns';
 
 export type Notification = {
   id: string;
@@ -15,6 +16,7 @@ export type Notification = {
   iconClass: string;
   message: React.ReactNode;
   rawMessage: string;
+  timestamp: Date;
 };
 
 type AdminNotificationPanelProps = {
@@ -46,7 +48,12 @@ export function AdminNotificationPanel({ notifications, dismissNotification }: A
                   <div key={notification.id} className="flex items-start justify-between group">
                     <div className="flex items-start">
                         <Icon className={`mr-3 mt-1 h-4 w-4 shrink-0 ${notification.iconClass}`} />
-                        <div className="text-sm text-muted-foreground">{notification.message}</div>
+                        <div className="flex-1">
+                          <div className="text-sm text-muted-foreground">{notification.message}</div>
+                          <p className="text-xs text-muted-foreground/70 mt-1">
+                            {format(notification.timestamp, 'p')} • {formatDistanceToNow(notification.timestamp, { addSuffix: true })}
+                          </p>
+                        </div>
                     </div>
                     <Button 
                       variant="ghost" 
