@@ -1,6 +1,7 @@
+
 'use client';
 
-import { Suspense, useState, useMemo, useEffect } from 'react';
+import { Suspense, useState, useMemo, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -68,74 +69,101 @@ function PaymentForm() {
     [duration, pricingTiers]
   );
   
-  useEffect(() => {
-    async function fetchInitialData() {
-        if (!pcName) return;
+  const fetchInitialData = useCallback(async () => {
+    if (!pcName) return;
 
-        try {
-            // Fetch pricing tiers
-            const pricingRes = await fetch('/api/pricing');
-            if (!pricingRes.ok) throw new Error('Failed to fetch pricing');
-            const pricingData: PricingTier[] = await pricingRes.json();
-            
-            const sortedPricingData = pricingData.sort((a, b) => Number(a.value) - Number(b.value));
-
-            setPricingTiers(sortedPricingData);
-            if (sortedPricingData.length > 0) {
-                setDuration(sortedPricingData[0].value);
-            }
-        } catch (error) {
-            console.error("Failed to fetch pricing", error)
-            toast({ variant: "destructive", title: "Error", description: "Could not fetch pricing data." });
-            router.push('/');
+    try {
+        const pricingRes = await fetch('/api/pricing');
+        if (!pricingRes.ok) throw new Error('Failed to fetch pricing');
+        const pricingData: PricingTier[] = await pricingRes.json();
+        const sortedPricingData = pricingData.sort((a, b) => Number(a.value) - Number(b.value));
+        setPricingTiers(sortedPricingData);
+        if (sortedPricingData.length > 0) {
+            setDuration(sortedPricingData[0].value);
         }
-    }
-    fetchInitialData();
-  }, [pcName, router, toast]);
 
-    useEffect(() => {
-        if (!pc) return;
-
-        const storedUserDetailsRaw = localStorage.getItem(`session-details-${pc.name}`);
-        const storedUserDetails = storedUserDetailsRaw ? JSON.parse(storedUserDetailsRaw) : null;
+        const pcResponse = await fetch('/api/pc-status');
+        const allPcs: PC[] = await pcResponse.json();
+        const currentPc = allPcs.find(p => p.name === pcName);
         
-        let newStep = step;
-
-        if (pc.status === 'in_use' && pc.session_start && pc.session_duration) {
-             // Check if the session belongs to the current user before changing the step
-            if (storedUserDetails && (storedUserDetails.user === pc.user || storedUserDetails.user === '') && storedUserDetails.duration === pc.session_duration) {
-                if (step !== 'in_session') {
-                    newStep = 'in_session';
-                    const startTime = new Date(pc.session_start);
-                    const endTime = add(startTime, { minutes: pc.session_duration });
-                    setSessionEndTime(endTime);
+        if (currentPc) {
+            if (currentPc.status === 'available') {
+                const reserveResponse = await fetch('/api/pc-status', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: currentPc.id, newStatus: 'pending_payment' }),
+                });
+                if (reserveResponse.ok) {
+                    const reservedPc = await reserveResponse.json();
+                    setPc(reservedPc);
+                } else {
+                    throw new Error('Failed to reserve PC');
                 }
+            } else {
+                 const validInitialStatuses = ['pending_payment', 'pending_approval', 'in_use', 'time_up'];
+                 if (validInitialStatuses.includes(currentPc.status)) {
+                    setPc(currentPc);
+                 } else {
+                    toast({ variant: "destructive", title: "PC Not Available", description: `${pcName} is currently not available for rent.` });
+                    router.push('/');
+                 }
             }
-        } else if (pc.status === 'time_up') {
-            if (step !== 'session_ended') {
-                newStep = 'session_ended';
-                setTimeRemaining('00:00:00');
-                startAlarm();
-                setIsSessionEndModalOpen(true);
-            }
-        } else if (pc.status === 'pending_approval') {
-             // Also check if the pending approval belongs to the current user
-            if (storedUserDetails && (storedUserDetails.user === pc.user || storedUserDetails.user === '') && storedUserDetails.duration === pc.session_duration) {
-                if (step !== 'pending_approval') {
-                    newStep = 'pending_approval';
-                }
-            }
-        } else if (pc.status === 'available' && (step === 'pending_approval' || step === 'session_ended')) {
-            // If the PC becomes available (e.g., admin cancels), clear stored details and redirect
-            localStorage.removeItem(`session-details-${pc.name}`);
+        } else {
+            toast({ variant: "destructive", title: "Error", description: "PC not found." });
             router.push('/');
-            return;
         }
+    } catch (error) {
+        console.error("Failed to fetch initial data", error);
+        toast({ variant: "destructive", title: "Error", description: "Could not load payment page." });
+        router.push('/');
+    }
+  }, [pcName, router, toast, setPc]);
 
-        if (newStep !== step) {
-            setStep(newStep);
+  useEffect(() => {
+    fetchInitialData();
+  }, [fetchInitialData]);
+
+
+  useEffect(() => {
+    if (!pc) return;
+
+    const storedUserDetailsRaw = localStorage.getItem(`session-details-${pc.name}`);
+    const storedUserDetails = storedUserDetailsRaw ? JSON.parse(storedUserDetailsRaw) : null;
+    
+    let newStep: PaymentStep | null = null;
+    let newSessionEndTime: Date | null = null;
+
+    if (pc.status === 'in_use' && pc.session_start && pc.session_duration) {
+        if (storedUserDetails && (storedUserDetails.user === pc.user || storedUserDetails.user === '') && storedUserDetails.duration === pc.session_duration) {
+            newStep = 'in_session';
+            const startTime = new Date(pc.session_start);
+            newSessionEndTime = add(startTime, { minutes: pc.session_duration });
         }
-    }, [pc, step, startAlarm, router]);
+    } else if (pc.status === 'time_up') {
+        newStep = 'session_ended';
+        setTimeRemaining('00:00:00');
+        startAlarm();
+        setIsSessionEndModalOpen(true);
+    } else if (pc.status === 'pending_approval') {
+        if (storedUserDetails && (storedUserDetails.user === pc.user || storedUserDetails.user === '') && storedUserDetails.duration === pc.session_duration) {
+            newStep = 'pending_approval';
+        }
+    } else if (pc.status === 'pending_payment') {
+        newStep = 'selection';
+    } else if (pc.status === 'available' && ['pending_approval', 'pending_payment'].includes(step)) {
+        localStorage.removeItem(`session-details-${pc.name}`);
+        toast({ title: "Request Cancelled", description: "Your rental request was cancelled by an admin." });
+        router.push('/');
+        return;
+    }
+
+    if (newStep && newStep !== step) {
+        setStep(newStep);
+    }
+    if (newSessionEndTime && (!sessionEndTime || newSessionEndTime.getTime() !== sessionEndTime.getTime())) {
+        setSessionEndTime(newSessionEndTime);
+    }
+  }, [pc, step, sessionEndTime, startAlarm, router, toast]);
 
 
   useEffect(() => {
@@ -150,7 +178,6 @@ function PaymentForm() {
         setTimeRemaining('00:00:00');
         clearInterval(timerId);
         
-        // Let the polling handle the status change to session_ended
         try {
             await fetch('/api/pc-status', {
                 method: 'PUT',
@@ -205,7 +232,6 @@ function PaymentForm() {
             email: email,
             duration: parseInt(selectedDuration.value),
         };
-        // Store session details in localStorage to identify the user's session
         localStorage.setItem(`session-details-${pc.name}`, JSON.stringify(sessionDetails));
 
         const response = await fetch('/api/pc-status', {
@@ -225,7 +251,6 @@ function PaymentForm() {
         
         const updatedPc = await response.json();
         setPc(updatedPc);
-        setStep('pending_approval');
         toast({
             title: 'Payment Sent!',
             description: 'Your payment has been sent for approval. Please wait for the admin.',
@@ -255,7 +280,6 @@ function PaymentForm() {
             throw new Error('Failed to cancel session.');
         }
 
-        // Clear stored session details on cancellation
         localStorage.removeItem(`session-details-${pc.name}`);
         
         router.push('/');
@@ -501,3 +525,5 @@ export default function PaymentPage() {
     </main>
   );
 }
+
+    
