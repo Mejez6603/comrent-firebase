@@ -2,6 +2,12 @@
 
 ComRent is a full-stack application designed to streamline the management of a computer rental center. It provides a real-time dashboard for monitoring PC statuses, a user-facing payment and session management interface, and a comprehensive admin panel for analytics, configuration, and control.
 
+![](images/image0001.png)
+![](images/image0002.png)
+![](images/image0003.png)
+![](images/image0004.png)
+![](images/image0005.png)
+
 ## Description
 
 This project simulates a real-world scenario for a PC rental business, allowing users to select available computers, make payments, and manage their sessions. Admins have a powerful backend interface to oversee operations, track revenue, manage pricing, and assist users. The application is built with a modern tech stack, prioritizing a responsive user experience and robust administrative control.
