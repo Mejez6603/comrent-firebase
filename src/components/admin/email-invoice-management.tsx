@@ -72,14 +72,14 @@ export function EmailInvoiceManagement({ addAuditLog }: EmailInvoiceManagementPr
       <CardHeader>
         <CardTitle>Master Email Invoice Template</CardTitle>
         <CardDescription>
-          Edit the template used for all invoice emails. The system will automatically replace placeholders like `{{customerName}}`.
+          Edit the template used for all invoice emails. The system will automatically replace placeholders like `{'{{customerName}}'}`.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <Alert>
             <Info className="h-4 w-4" />
             <AlertDescription>
-                Use placeholders to insert dynamic data: `{{customerName}}`, `{{pcName}}`, `{{duration}}`, `{{amount}}`, `{{companyName}}`.
+                Use placeholders to insert dynamic data: `{'{{customerName}}'}`, `{'{{pcName}}'}`, `{'{{duration}}'}`, `{'{{amount}}'}`, `{'{{companyName}}'}`.
             </AlertDescription>
         </Alert>
 
