@@ -155,14 +155,16 @@ function PaymentForm() {
             setStep('selection');
             break;
         case 'available':
-            if (['pending_approval', 'pending_payment'].includes(step)) {
+            // This case handles when an admin cancels a request
+            const previousStep = step;
+            if (previousStep === 'pending_approval' || previousStep === 'pending_payment') {
                 localStorage.removeItem(`session-details-${pc.name}`);
                 toast({ title: 'Request Cancelled', description: 'Your rental request was cancelled by an admin.' });
                 router.push('/');
             }
             break;
     }
-  }, [pc, step, router, toast, startAlarm]);
+  }, [pc, router, toast, startAlarm, step]);
 
 
   useEffect(() => {
