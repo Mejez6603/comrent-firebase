@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { MessageSquare, Send, X, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback } from '../ui/avatar';
-import { formatDistanceToNow } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 import { useChatSounds } from '@/hooks/use-chat-sounds';
 
 function AdminChatUI() {
@@ -129,7 +129,7 @@ function AdminChatUI() {
                                 >
                                     <p>{msg.text}</p>
                                     <p className={cn("text-xs mt-1", msg.sender === 'admin' ? 'text-primary-foreground/70 text-right' : 'text-muted-foreground/70')}>
-                                        {formatDistanceToNow(new Date(msg.timestamp), { addSuffix: true })}
+                                        {format(new Date(msg.timestamp), 'p')} • {formatDistanceToNow(new Date(msg.timestamp), { addSuffix: true })}
                                     </p>
                                 </div>
                             </div>

@@ -11,7 +11,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { MessageSquare, Send } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { formatDistanceToNow } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 
 export function ChatButton() {
   const { conversations, activeConversation, sendMessage, unreadCounts } = useChat();
@@ -85,7 +85,7 @@ export function ChatButton() {
                 >
                   <p>{msg.text}</p>
                    <p className={cn("text-xs mt-1", msg.sender === 'user' ? 'text-primary-foreground/70 text-right' : 'text-muted-foreground/70')}>
-                        {formatDistanceToNow(new Date(msg.timestamp), { addSuffix: true })}
+                       {format(new Date(msg.timestamp), 'p')} • {formatDistanceToNow(new Date(msg.timestamp), { addSuffix: true })}
                     </p>
                 </div>
               </div>
