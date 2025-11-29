@@ -2,27 +2,33 @@
 
 import { useRef, useCallback } from 'react';
 
-// Store AudioContext and oscillator in a way that persists across re-renders
-let audioContext: AudioContext | null = null;
-let oscillator: OscillatorNode | null = null;
-
-const getAudioContext = () => {
-    if (typeof window !== 'undefined' && (!audioContext || audioContext.state === 'closed')) {
-        audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-    }
-    return audioContext;
-};
-
 export const useAlarm = () => {
+    const audioContextRef = useRef<AudioContext | null>(null);
+    const oscillatorRef = useRef<OscillatorNode | null>(null);
+
+    const getAudioContext = useCallback(() => {
+        if (typeof window !== 'undefined') {
+            if (!audioContextRef.current || audioContextRef.current.state === 'closed') {
+                audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+            }
+        }
+        return audioContextRef.current;
+    }, []);
+
 
     const startAlarm = useCallback(() => {
         const ctx = getAudioContext();
         if (!ctx) return;
         
         // Stop any existing alarm before starting a new one
-        if (oscillator) {
-            oscillator.stop();
-            oscillator.disconnect();
+        if (oscillatorRef.current) {
+            try {
+                clearInterval((oscillatorRef.current as any).intervalId);
+                oscillatorRef.current.stop();
+                oscillatorRef.current.disconnect();
+            } catch (e) {
+                // Ignore errors from stopping an already stopped oscillator
+            }
         }
 
         // Resume context if it's suspended
@@ -30,7 +36,7 @@ export const useAlarm = () => {
             ctx.resume();
         }
 
-        oscillator = ctx.createOscillator();
+        const oscillator = ctx.createOscillator();
         const gainNode = ctx.createGain();
 
         oscillator.connect(gainNode);
@@ -38,37 +44,42 @@ export const useAlarm = () => {
         
         oscillator.type = 'sine';
         oscillator.frequency.setValueAtTime(900, ctx.currentTime); // High-pitched beep
-        oscillator.loop = true; // Make the sound repeat
-
+        
         gainNode.gain.setValueAtTime(0, ctx.currentTime);
-        gainNode.gain.linearRampToValueAtTime(0.5, ctx.currentTime + 0.01);
-        gainNode.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.2);
-
 
         // Create a repeating pattern
         const playBeep = () => {
-            if (!oscillator) return;
+            if (!oscillatorRef.current) return;
+            // Check if context is running, otherwise resume it.
+            if (ctx.state === 'suspended') {
+                ctx.resume();
+            }
             gainNode.gain.setValueAtTime(0.5, ctx.currentTime);
             gainNode.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.15);
         }
         
         // Start immediately and repeat
-        playBeep();
         const intervalId = setInterval(playBeep, 500);
-
+        
         oscillator.start();
         
         // Assign interval to oscillator to clear it later
         (oscillator as any).intervalId = intervalId;
+        oscillatorRef.current = oscillator;
 
-    }, []);
+    }, [getAudioContext]);
 
     const stopAlarm = useCallback(() => {
-        if (oscillator) {
-            clearInterval((oscillator as any).intervalId);
-            oscillator.stop();
-            oscillator.disconnect();
-            oscillator = null;
+        if (oscillatorRef.current) {
+            try {
+                clearInterval((oscillatorRef.current as any).intervalId);
+                oscillatorRef.current.stop();
+                oscillatorRef.current.disconnect();
+            } catch (e) {
+                // Ignore errors, it might have been stopped already
+            } finally {
+                oscillatorRef.current = null;
+            }
         }
     }, []);
 
