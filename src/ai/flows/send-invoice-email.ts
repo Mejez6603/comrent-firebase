@@ -30,6 +30,10 @@ const sendGeneratedEmailFlow = ai.defineFlow(
     const resend = new Resend(process.env.RESEND_API_KEY);
 
     try {
+      if (!process.env.RESEND_API_KEY) {
+        throw new Error('RESEND_API_KEY is not configured.');
+      }
+      
       console.log(`INFO: Sending email to ${input.customerEmail}`);
       const { data, error } = await resend.emails.send({
         from: input.fromAddress,
@@ -47,6 +51,7 @@ const sendGeneratedEmailFlow = ai.defineFlow(
       return { success: true, message: `Email sent successfully to ${input.customerEmail}` };
     } catch (e: any) {
       console.error('Failed to send email:', e);
+      // Ensure that even in case of an exception, we return a structured error.
       return { success: false, message: e.message || 'An unknown error occurred.' };
     }
   }
