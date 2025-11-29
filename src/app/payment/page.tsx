@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { Suspense, useState, useMemo, useEffect, useCallback } from 'react';
@@ -33,7 +34,6 @@ import { PaymentHelpPopover } from '@/components/payment-help-popover';
 import { useAlarm } from '@/hooks/use-alarm';
 import { SessionEndedDialog } from '@/components/session-ended-dialog';
 import { ChatProvider, useChat } from '@/hooks/use-chat';
-import { ChatButton } from '@/components/chat-button';
 
 type PaymentStep = 'selection' | 'pending_approval' | 'in_session' | 'session_ended';
 
