@@ -121,6 +121,48 @@ This application is configured for deployment on platforms like **Railway** or *
 
 The `package.json` `start` script is set to `next start -p $PORT`, which allows the hosting provider to dynamically assign the port for the application to run on. Simply connect your GitHub repository to your hosting provider, and it should build and deploy automatically.
 
+## Usage Guide
+
+1.  **User View**:
+    -   The initial page shows the grid of all PCs.
+    -   Click on a green "Available" PC to start the rental process.
+    -   Follow the on-screen instructions to select a duration and make a payment.
+    -   Once approved by an admin, your session timer will begin.
+    -   Use the chat bubble to contact an admin for assistance.
+
+2.  **Admin View**:
+    -   Click the "Switch to Admin" button on the user view.
+    -   Use the sidebar to navigate between `Dashboard`, `Analytics`, `Pricing`, `Invoice Layout`, and `Audit Log`.
+    -   On the `Dashboard`, you can approve pending sessions, change PC statuses, and view user details.
+    -   Click a user's email in the table to generate and send an invoice.
+
+## Project Structure
+
+The project is organized following Next.js App Router conventions.
+
+```
+/src
+├── app/                  # Main application routes
+│   ├── api/              # API endpoints for backend logic
+│   ├── layout.tsx        # Root layout
+│   └── page.tsx          # Main entry point (user/admin switcher)
+├── components/           # Reusable React components
+│   ├── admin/            # Components specific to the admin dashboard
+│   ├── ui/               # ShadCN UI components
+│   └── *.tsx             # General application components
+├── hooks/                # Custom React hooks
+├── lib/                  # Utility functions, types, and constants
+└── ai/                   # Genkit AI flows
+    ├── flows/
+    └── genkit.ts
+```
+
+## Troubleshooting
+
+-   **Error "pcName is required"**: This can happen if you navigate directly to the `/payment` page without selecting a PC first. Always start from the main page.
+-   **API Errors**: Ensure your `.env` file is correctly set up with the required API keys.
+-   **Stale Data**: If the admin dashboard seems out of sync, use the "Refresh" button.
+
 ## Future Enhancements
 
 -   **Full Responsive Design**: Further enhance the UI to be perfectly responsive and presentable on all mobile device sizes, ensuring users do not need "desktop mode".
