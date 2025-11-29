@@ -131,52 +131,38 @@ function PaymentForm() {
     const storedUserDetailsRaw = localStorage.getItem(`session-details-${pc.name}`);
     const storedUserDetails = storedUserDetailsRaw ? JSON.parse(storedUserDetailsRaw) : null;
   
-    let newStep: PaymentStep | null = null;
-    let newSessionEndTime: Date | null = null;
-  
-    if (pc.status === 'in_use' && pc.session_start && pc.session_duration) {
-      if (
-        storedUserDetails &&
-        (storedUserDetails.user === pc.user || storedUserDetails.user === '') &&
-        storedUserDetails.duration === pc.session_duration
-      ) {
-        newStep = 'in_session';
-        const startTime = new Date(pc.session_start);
-        newSessionEndTime = add(startTime, { minutes: pc.session_duration });
-      }
-    } else if (pc.status === 'time_up') {
-      newStep = 'session_ended';
-      setTimeRemaining('00:00:00');
-      startAlarm();
-      setIsSessionEndModalOpen(true);
-    } else if (pc.status === 'pending_approval') {
-      if (
-        storedUserDetails &&
-        (storedUserDetails.user === pc.user || storedUserDetails.user === '') &&
-        storedUserDetails.duration === pc.session_duration
-      ) {
-        newStep = 'pending_approval';
-      }
-    } else if (pc.status === 'pending_payment') {
-      newStep = 'selection';
-    } else if (pc.status === 'available' && ['pending_approval', 'pending_payment'].includes(step)) {
-      localStorage.removeItem(`session-details-${pc.name}`);
-      toast({ title: 'Request Cancelled', description: 'Your rental request was cancelled by an admin.' });
-      router.push('/');
-      return;
+    // This hook is responsible for managing the UI step based on the PC status
+    switch(pc.status) {
+        case 'in_use':
+            if (pc.session_start && pc.session_duration && storedUserDetails) {
+                setStep('in_session');
+                const startTime = new Date(pc.session_start);
+                setSessionEndTime(add(startTime, { minutes: pc.session_duration }));
+            }
+            break;
+        case 'time_up':
+            setStep('session_ended');
+            setTimeRemaining('00:00:00');
+            startAlarm();
+            setIsSessionEndModalOpen(true);
+            break;
+        case 'pending_approval':
+             if (storedUserDetails) {
+                setStep('pending_approval');
+             }
+            break;
+        case 'pending_payment':
+            setStep('selection');
+            break;
+        case 'available':
+            if (['pending_approval', 'pending_payment'].includes(step)) {
+                localStorage.removeItem(`session-details-${pc.name}`);
+                toast({ title: 'Request Cancelled', description: 'Your rental request was cancelled by an admin.' });
+                router.push('/');
+            }
+            break;
     }
-  
-    if (newStep && newStep !== step) {
-      setStep(newStep);
-    }
-  
-    if (newSessionEndTime) {
-      // Check if sessionEndTime is null or different before setting
-      if (!sessionEndTime || newSessionEndTime.getTime() !== sessionEndTime.getTime()) {
-        setSessionEndTime(newSessionEndTime);
-      }
-    }
-  }, [pc, step, router, toast, startAlarm, sessionEndTime]);
+  }, [pc, step, router, toast, startAlarm]);
 
 
   useEffect(() => {
@@ -374,7 +360,7 @@ function PaymentForm() {
                     </div>
                     <div className='space-y-2'>
                         <p className="text-sm text-muted-foreground">Time Remaining</p>
-                        <p className="text-5xl font-bold tracking-tighter">{timeRemaining}</p>
+                        <p className="text-5xl font-bold tracking-tighter">{timeRemaining || '...'}</p>
                     </div>
                     <div className="flex flex-col gap-3 pt-4">
                         <Button size="lg" onClick={handleExtend}>
