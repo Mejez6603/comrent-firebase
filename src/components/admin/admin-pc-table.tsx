@@ -61,7 +61,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
   } from "@/components/ui/dropdown-menu";
-import { sendGeneratedEmail, type SendGeneratedEmailInput } from '@/ai/flows/send-invoice-email';
+import { generateInvoiceEmail, sendGeneratedEmail, type GenerateInvoiceEmailOutput } from '@/ai/flows/send-invoice-email';
 import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 
@@ -122,18 +122,13 @@ type AdminPcTableProps = {
     pricingTiers: PricingTier[];
 }
 
-type PreviewInvoice = {
-    subject: string;
-    body: string;
-}
-
 export function AdminPcTable({ pcs, setPcs, addAuditLog, onRefresh, isRefreshing, pricingTiers }: AdminPcTableProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<PC | null>(null);
   
   const [invoicePc, setInvoicePc] = useState<PC | null>(null);
-  const [invoiceContent, setInvoiceContent] = useState<PreviewInvoice | null>(null);
+  const [invoiceContent, setInvoiceContent] = useState<GenerateInvoiceEmailOutput | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSending, setIsSending] = useState(false);
   
@@ -247,21 +242,19 @@ export function AdminPcTable({ pcs, setPcs, addAuditLog, onRefresh, isRefreshing
         if (!templateResponse.ok) throw new Error('Failed to fetch email template.');
         const template: { subject: string, body: string } = await templateResponse.json();
 
-        // Replace placeholders
-        const populatedBody = template.body
-            .replace(/{{customerName}}/g, pc.user || 'Valued Customer')
-            .replace(/{{pcName}}/g, pc.name)
-            .replace(/{{duration}}/g, durationInfo.label)
-            .replace(/{{amount}}/g, `₱${durationInfo.price.toFixed(2)}`)
-            .replace(/{{companyName}}/g, 'ComRent');
-
-        const populatedSubject = template.subject
-            .replace(/{{companyName}}/g, 'ComRent');
-
-        setInvoiceContent({ subject: populatedSubject, body: populatedBody });
+        const content = await generateInvoiceEmail({
+            customerName: pc.user,
+            pcName: pc.name,
+            duration: durationInfo.label,
+            amount: `₱${durationInfo.price.toFixed(2)}`,
+            companyName: 'ComRent',
+            subjectTemplate: template.subject,
+            bodyTemplate: template.body
+        });
+        setInvoiceContent(content);
     } catch (error) {
         console.error("Failed to generate invoice content:", error);
-        toast({ variant: 'destructive', title: 'Error', description: 'Could not load email content.' });
+        toast({ variant: 'destructive', title: 'AI Error', description: 'Could not generate email content.' });
         setInvoicePc(null);
     } finally {
         setIsGenerating(false);
@@ -275,12 +268,12 @@ export function AdminPcTable({ pcs, setPcs, addAuditLog, onRefresh, isRefreshing
     try {
         const result = await sendGeneratedEmail({
             customerEmail: invoicePc.email,
-            emailSubject: invoiceContent.subject,
-            emailBody: invoiceContent.body,
+            emailSubject: invoiceContent.emailSubject,
+            emailBody: invoiceContent.emailBody,
             fromAddress: 'ComRent <onboarding@resend.dev>'
         });
 
-        if (result.success) {
+        if (result && result.success) {
             addAuditLog(`Sent invoice to ${invoicePc.email} for PC "${invoicePc.name}".`);
             toast({ title: 'Invoice Sent!', description: `Email has been sent to ${invoicePc.email}.`});
         } else {
@@ -528,8 +521,8 @@ export function AdminPcTable({ pcs, setPcs, addAuditLog, onRefresh, isRefreshing
                     <Label htmlFor="subject" className="text-right">Subject</Label>
                     <Input
                         id="subject"
-                        value={invoiceContent.subject}
-                        onChange={(e) => setInvoiceContent(prev => prev ? {...prev, subject: e.target.value} : null)}
+                        value={invoiceContent.emailSubject}
+                        onChange={(e) => setInvoiceContent(prev => prev ? {...prev, emailSubject: e.target.value} : null)}
                         className="col-span-3"
                     />
                 </div>
@@ -537,15 +530,15 @@ export function AdminPcTable({ pcs, setPcs, addAuditLog, onRefresh, isRefreshing
                     <Label htmlFor="body" className="text-right">Body</Label>
                     <Textarea
                         id="body"
-                        value={invoiceContent.body}
-                        onChange={(e) => setInvoiceContent(prev => prev ? {...prev, body: e.target.value} : null)}
+                        value={invoiceContent.emailBody}
+                        onChange={(e) => setInvoiceContent(prev => prev ? {...prev, emailBody: e.target.value} : null)}
                         className="col-span-3 min-h-[250px]"
                     />
                 </div>
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setInvoicePc(null)}>Cancel</Button>
+            <Button variant="outline" onClick={() => { setInvoicePc(null); setInvoiceContent(null); }}>Cancel</Button>
             <Button onClick={handleSendInvoice} disabled={isSending || isGenerating || !invoiceContent}>
               {isSending ? <Loader className="animate-spin mr-2"/> : <Send className="mr-2" />}
               {isSending ? 'Sending...' : 'Send Invoice'}
