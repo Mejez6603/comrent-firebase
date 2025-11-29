@@ -128,7 +128,7 @@ function AdminChatUI() {
                                     )}
                                 >
                                     <p>{msg.text}</p>
-                                    <p className={cn("text-xs mt-1", msg.sender === 'admin' ? 'text-primary-foreground/70' : 'text-muted-foreground/70')}>
+                                    <p className={cn("text-xs mt-1", msg.sender === 'admin' ? 'text-primary-foreground/70 text-right' : 'text-muted-foreground/70')}>
                                         {formatDistanceToNow(new Date(msg.timestamp), { addSuffix: true })}
                                     </p>
                                 </div>
