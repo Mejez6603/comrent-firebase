@@ -48,7 +48,7 @@ export function ChatProvider({ children, role = 'user' }: ChatProviderProps) {
   useEffect(() => {
     if (role !== 'user' || !activeConversation) return;
 
-    async function fetchAndReservePc() {
+    async function fetchPcData() {
         try {
             const res = await fetch(`/api/pc-status`);
             const allPcs: PC[] = await res.json();
@@ -62,22 +62,7 @@ export function ChatProvider({ children, role = 'user' }: ChatProviderProps) {
                     router.push('/');
                     return;
                 }
-
-                if (currentPc.status === 'available') {
-                    // Reserve the PC by setting it to pending_payment
-                    const response = await fetch('/api/pc-status', {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ id: currentPc.id, newStatus: 'pending_payment' })
-                    });
-                    if (!response.ok) {
-                        throw new Error('Failed to reserve PC.');
-                    }
-                    const updatedPc: PC = await response.json();
-                    setPc(updatedPc);
-                } else {
-                    setPc(currentPc);
-                }
+                setPc(currentPc);
 
             } else {
                 toast({ variant: "destructive", title: "Error", description: "PC not found." });
@@ -90,9 +75,8 @@ export function ChatProvider({ children, role = 'user' }: ChatProviderProps) {
         }
     }
 
-    // Only run this logic once when the component mounts and pc is not yet set.
     if (!pc) {
-      fetchAndReservePc();
+      fetchPcData();
     }
 
   }, [role, activeConversation, pc, router, toast]);
@@ -121,18 +105,7 @@ export function ChatProvider({ children, role = 'user' }: ChatProviderProps) {
                 console.warn("Could not fetch all messages.", e);
             }
              
-            setConversations(currentConversations => {
-                const updatedConversations: Record<string, Message[]> = {};
-                const activePcNamesWithMessages = new Set(Object.keys(newConversations));
-                
-                // Keep existing conversations that are still active
-                for(const pcName of activePcNamesWithMessages) {
-                    updatedConversations[pcName] = newConversations[pcName];
-                }
-
-                return updatedConversations;
-            });
-
+            setConversations(newConversations);
             setUnreadCounts(newUnreadCounts);
         } else if (role === 'user' && pc) {
             // Fetch messages for the user's current PC

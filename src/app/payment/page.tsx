@@ -98,37 +98,41 @@ function PaymentForm() {
 
         const storedUserDetailsRaw = localStorage.getItem(`session-details-${pc.name}`);
         const storedUserDetails = storedUserDetailsRaw ? JSON.parse(storedUserDetailsRaw) : null;
-
-        const currentStep = step;
-
-        let newStep = currentStep;
+        
+        let newStep = step;
 
         if (pc.status === 'in_use' && pc.session_start && pc.session_duration) {
              // Check if the session belongs to the current user before changing the step
-            if (storedUserDetails && storedUserDetails.user === pc.user && storedUserDetails.duration === pc.session_duration) {
-                newStep = 'in_session';
-                const startTime = new Date(pc.session_start);
-                const endTime = add(startTime, { minutes: pc.session_duration });
-                setSessionEndTime(endTime);
+            if (storedUserDetails && (storedUserDetails.user === pc.user || storedUserDetails.user === '') && storedUserDetails.duration === pc.session_duration) {
+                if (step !== 'in_session') {
+                    newStep = 'in_session';
+                    const startTime = new Date(pc.session_start);
+                    const endTime = add(startTime, { minutes: pc.session_duration });
+                    setSessionEndTime(endTime);
+                }
             }
         } else if (pc.status === 'time_up') {
-            newStep = 'session_ended';
-            setTimeRemaining('00:00:00');
-            startAlarm();
-            setIsSessionEndModalOpen(true);
+            if (step !== 'session_ended') {
+                newStep = 'session_ended';
+                setTimeRemaining('00:00:00');
+                startAlarm();
+                setIsSessionEndModalOpen(true);
+            }
         } else if (pc.status === 'pending_approval') {
              // Also check if the pending approval belongs to the current user
-            if (storedUserDetails && storedUserDetails.user === pc.user && storedUserDetails.duration === pc.session_duration) {
-                newStep = 'pending_approval';
+            if (storedUserDetails && (storedUserDetails.user === pc.user || storedUserDetails.user === '') && storedUserDetails.duration === pc.session_duration) {
+                if (step !== 'pending_approval') {
+                    newStep = 'pending_approval';
+                }
             }
-        } else if (pc.status === 'available' && (currentStep === 'pending_approval' || currentStep === 'session_ended')) {
-            // If the PC becomes available, clear stored details and redirect
+        } else if (pc.status === 'available' && (step === 'pending_approval' || step === 'session_ended')) {
+            // If the PC becomes available (e.g., admin cancels), clear stored details and redirect
             localStorage.removeItem(`session-details-${pc.name}`);
             router.push('/');
             return;
         }
 
-        if (newStep !== currentStep) {
+        if (newStep !== step) {
             setStep(newStep);
         }
     }, [pc, step, startAlarm, router]);
@@ -420,13 +424,13 @@ function PaymentForm() {
                             <div className="space-y-3 animate-in fade-in-50">
                                 <Label className="text-sm text-center block">Select Payment Method</Label>
                                 <div className="grid grid-cols-1 gap-3">
-                                    <Button size="lg" className="font-bold bg-blue-500 hover:bg-blue-600" onClick={() => handlePaymentMethodSelect('GCash')}>
+                                    <Button size="lg" className="font-bold bg-blue-500 hover:bg-blue-600" onClick={() => handlePaymentMethodSelect('GCash')} disabled={!duration}>
                                         GCash
                                     </Button>
-                                    <Button size="lg" className="font-bold bg-green-800 hover:bg-green-900" onClick={() => handlePaymentMethodSelect('Maya')}>
+                                    <Button size="lg" className="font-bold bg-green-800 hover:bg-green-900" onClick={() => handlePaymentMethodSelect('Maya')} disabled={!duration}>
                                         Maya
                                     </Button>
-                                    <Button size="lg" className="font-bold bg-red-600 hover:bg-red-700" onClick={() => handlePaymentMethodSelect('QR Code')}>
+                                    <Button size="lg" className="font-bold bg-red-600 hover:bg-red-700" onClick={() => handlePaymentMethodSelect('QR Code')} disabled={!duration}>
                                         QR Code
                                     </Button>
                                 </div>
