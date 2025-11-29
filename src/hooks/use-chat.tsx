@@ -100,47 +100,35 @@ export function ChatProvider({ children, role = 'user' }: ChatProviderProps) {
   const fetchMessagesAndStatus = useCallback(async () => {
     try {
         if (role === 'admin') {
-            const allPcsResponse = await fetch('/api/pc-status');
-            const allPcs: PC[] = await allPcsResponse.json();
             const newConversations: Record<string, Message[]> = {};
             const newUnreadCounts: Record<string, number> = {};
-            const activePcNamesWithMessages = new Set<string>();
 
-            // Fetch all messages in a single call if your API supports it.
-            // Assuming an endpoint `/api/messages/all` that returns a map or object.
+            // Fetch all messages in a single call from the new endpoint.
             try {
-                const msgResponse = await fetch(`/api/messages`);
+                const msgResponse = await fetch(`/api/messages/all`);
                 if(msgResponse.ok) {
-                    const allMessagesByPc: Map<string, Message[]> = new Map(Object.entries(await msgResponse.json()));
+                    const allMessagesByPc: Record<string, Message[]> = await msgResponse.json();
 
-                    for (const [pcName, messages] of allMessagesByPc.entries()) {
+                    for (const pcName in allMessagesByPc) {
+                        const messages = allMessagesByPc[pcName];
                          if (messages.length > 0) {
                             newConversations[pcName] = messages;
                             newUnreadCounts[pcName] = messages.filter(m => !m.isRead && m.sender !== role).length;
-                            activePcNamesWithMessages.add(pcName);
                         }
                     }
                 }
             } catch (e) {
-                // It's possible for this to fail if the route is not set up, which is fine.
-                console.warn("Could not fetch all messages at once.", e);
+                console.warn("Could not fetch all messages.", e);
             }
              
             setConversations(currentConversations => {
                 const updatedConversations: Record<string, Message[]> = {};
-                // Only keep conversations for PCs that still have messages on the server
-                for(const pcName of activePcNamesWithMessages) {
-                    if (newConversations[pcName]) {
-                        updatedConversations[pcName] = newConversations[pcName];
-                    }
-                }
+                const activePcNamesWithMessages = new Set(Object.keys(newConversations));
                 
-                // Clear out old conversations that are no longer active
-                Object.keys(currentConversations).forEach(pcName => {
-                    if (activePcNamesWithMessages.has(pcName)) {
-                        updatedConversations[pcName] = newConversations[pcName];
-                    }
-                });
+                // Keep existing conversations that are still active
+                for(const pcName of activePcNamesWithMessages) {
+                    updatedConversations[pcName] = newConversations[pcName];
+                }
 
                 return updatedConversations;
             });
