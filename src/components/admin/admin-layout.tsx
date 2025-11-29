@@ -99,7 +99,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
       case 'pricing':
         return <PricingManagement pricingTiers={pricingTiers} setPricingTiers={setPricingTiers} addAuditLog={addAuditLog} />;
       case 'email-invoice':
-        return <EmailInvoiceManagement pcs={pcs} pricingTiers={pricingTiers} addAuditLog={addAuditLog} />;
+        return <EmailInvoiceManagement addAuditLog={addAuditLog} />;
       case 'dashboard':
       default:
         return (
@@ -114,6 +114,11 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
             />
         );
     }
+  };
+
+  const getPageTitle = () => {
+    if (activeTab === 'email-invoice') return 'Invoice Layout';
+    return activeTab.replace('-', ' ');
   };
 
   return (
@@ -163,10 +168,10 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
               <SidebarMenuButton
                 onClick={() => setActiveTab('email-invoice')}
                 isActive={activeTab === 'email-invoice'}
-                tooltip="Email Invoices"
+                tooltip="Invoice Layout"
               >
                 <Mail />
-                <span>Email Invoices</span>
+                <span>Invoice Layout</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
@@ -190,7 +195,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
       <SidebarInset className="p-4 md:p-6">
         <div className="flex items-center gap-4 mb-6">
             <SidebarTrigger className="md:hidden" />
-            <h1 className="text-2xl font-bold capitalize">{activeTab.replace('-', ' ')}</h1>
+            <h1 className="text-2xl font-bold capitalize">{getPageTitle()}</h1>
         </div>
         {children}
         {renderContent()}
