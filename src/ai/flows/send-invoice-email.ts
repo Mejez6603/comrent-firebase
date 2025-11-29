@@ -27,19 +27,18 @@ const sendGeneratedEmailFlow = ai.defineFlow(
     outputSchema: z.object({ success: z.boolean(), message: z.string() }),
   },
   async (input) => {
-    const resend = new Resend(process.env.RESEND_API_KEY);
-
     try {
       if (!process.env.RESEND_API_KEY) {
-        throw new Error('RESEND_API_KEY is not configured.');
+        throw new Error('RESEND_API_KEY is not configured in environment variables.');
       }
-      
+      const resend = new Resend(process.env.RESEND_API_KEY);
+
       console.log(`INFO: Sending email to ${input.customerEmail}`);
       const { data, error } = await resend.emails.send({
         from: input.fromAddress,
         to: [input.customerEmail],
         subject: input.emailSubject,
-        text: input.emailBody,
+        text: input.emailBody, // Use text instead of html for simplicity, as our current template is text-based
       });
 
       if (error) {
