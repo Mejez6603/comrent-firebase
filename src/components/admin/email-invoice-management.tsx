@@ -1,221 +1,114 @@
 'use client';
-import type { PC, PricingTier } from '@/lib/types';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { useState } from 'react';
 import { Button } from '../ui/button';
 import { useToast } from '@/hooks/use-toast';
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog";
-import { generateInvoiceEmail, sendGeneratedEmail, GenerateInvoiceEmailOutput } from '@/ai/flows/send-invoice-email';
+import { Loader, Save, Info } from 'lucide-react';
 import { Label } from '../ui/label';
-import { Textarea } from '../ui/textarea';
 import { Input } from '../ui/input';
-import { Loader, Send, Mail } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
+import { Textarea } from '../ui/textarea';
+import { Alert, AlertDescription } from '../ui/alert';
 
 type EmailInvoiceManagementProps = { 
-    pcs: PC[];
-    pricingTiers: PricingTier[];
     addAuditLog: (log: string) => void;
 }
 
-export function EmailInvoiceManagement({ pcs, pricingTiers, addAuditLog }: EmailInvoiceManagementProps) {
-  const [invoicePc, setInvoicePc] = useState<PC | null>(null);
-  const [invoiceContent, setInvoiceContent] = useState<GenerateInvoiceEmailOutput | null>(null);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [isSending, setIsSending] = useState(false);
-
+export function EmailInvoiceManagement({ addAuditLog }: EmailInvoiceManagementProps) {
+  const [subject, setSubject] = useState('');
+  const [body, setBody] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
 
-  const eligiblePcs = pcs.filter(pc => 
-    pc.email && 
-    pc.user && 
-    pc.session_duration && 
-    ['in_use', 'time_up', 'pending_payment'].includes(pc.status)
-  );
-
-  const handleOpenInvoiceDialog = async (pc: PC) => {
-    if (!pc.email || !pc.session_duration || !pc.user) return;
-    
-    setInvoicePc(pc);
-    setIsGenerating(true);
-
-    const durationInfo = pricingTiers.find(d => d.value === String(pc.session_duration));
-    if (!durationInfo) {
-        toast({variant: "destructive", title: "Error", description: "Invalid session duration."});
-        setIsGenerating(false);
-        return;
+  useEffect(() => {
+    const fetchTemplate = async () => {
+      setIsLoading(true);
+      try {
+        const response = await fetch('/api/email-template');
+        if (!response.ok) throw new Error('Failed to fetch template.');
+        const template = await response.json();
+        setSubject(template.subject);
+        setBody(template.body);
+      } catch (error) {
+        console.error(error);
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not load email template.' });
+      } finally {
+        setIsLoading(false);
+      }
     };
+    fetchTemplate();
+  }, [toast]);
 
+  const handleSaveTemplate = async () => {
+    setIsSaving(true);
     try {
-        const content = await generateInvoiceEmail({
-            customerName: pc.user,
-            pcName: pc.name,
-            duration: durationInfo.label,
-            amount: `₱${durationInfo.price.toFixed(2)}`,
-            companyName: 'ComRent',
-        });
-        setInvoiceContent(content);
+      const response = await fetch('/api/email-template', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subject, body }),
+      });
+      if (!response.ok) throw new Error('Failed to save template.');
+      
+      addAuditLog('Updated the master email invoice template.');
+      toast({ title: 'Template Saved!', description: 'The email invoice template has been updated.' });
     } catch (error) {
-        console.error("Failed to generate invoice content:", error);
-        toast({ variant: 'destructive', title: 'AI Error', description: 'Could not generate email content.' });
-        setInvoicePc(null);
+        console.error(error);
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not save the template.' });
     } finally {
-        setIsGenerating(false);
-    }
-  }
-
-  const handleSendInvoice = async () => {
-    if (!invoicePc || !invoiceContent || !invoicePc.email) return;
-
-    setIsSending(true);
-    try {
-        const result = await sendGeneratedEmail({
-            customerEmail: invoicePc.email,
-            emailSubject: invoiceContent.emailSubject,
-            emailBody: invoiceContent.emailBody,
-            fromAddress: 'ComRent <onboarding@resend.dev>'
-        });
-
-        if (result.success) {
-            addAuditLog(`Sent invoice to ${invoicePc.email} for PC "${invoicePc.name}".`);
-            toast({ title: 'Invoice Sent!', description: `Email has been sent to ${invoicePc.email}.`});
-        } else {
-            throw new Error(result.message || 'Flow returned success: false');
-        }
-    } catch(error: any) {
-        console.error('Failed to send invoice email:', error);
-        toast({ variant: 'destructive', title: 'Sending Error', description: error.message || 'Could not send invoice email.' });
-    } finally {
-        setIsSending(false);
-        setInvoicePc(null);
-        setInvoiceContent(null);
+        setIsSaving(false);
     }
   };
 
+  if (isLoading) {
+    return (
+        <div className="flex items-center justify-center h-96">
+            <Loader className="h-8 w-8 animate-spin" />
+        </div>
+    );
+  }
 
   return (
-    <>
-      <Card>
-        <CardHeader>
-          <CardTitle>Manage Email Invoices</CardTitle>
-          <CardDescription>
-            View, edit, and send email invoices to users for their sessions.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>PC Name</TableHead>
-                <TableHead>User</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Amount</TableHead>
-                <TableHead>Session Time</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {eligiblePcs.length > 0 ? eligiblePcs.map((pc) => {
-                const durationInfo = pricingTiers.find(d => d.value === String(pc.session_duration));
-                const amount = durationInfo ? `₱${durationInfo.price.toFixed(2)}` : '-';
-                
-                let timeInfo = '-';
-                if (pc.status === 'in_use' && pc.session_start && pc.session_duration) {
-                  const endTime = new Date(pc.session_start).getTime() + pc.session_duration * 60 * 1000;
-                  timeInfo = `Ends in ${formatDistanceToNow(endTime)}`;
-                } else if (durationInfo) {
-                    timeInfo = durationInfo.label;
-                }
+    <Card>
+      <CardHeader>
+        <CardTitle>Master Email Invoice Template</CardTitle>
+        <CardDescription>
+          Edit the template used for all invoice emails. The system will automatically replace placeholders like `{{customerName}}`.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <Alert>
+            <Info className="h-4 w-4" />
+            <AlertDescription>
+                Use placeholders to insert dynamic data: `{{customerName}}`, `{{pcName}}`, `{{duration}}`, `{{amount}}`, `{{companyName}}`.
+            </AlertDescription>
+        </Alert>
 
-                return (
-                  <TableRow key={pc.id}>
-                    <TableCell className="font-medium">{pc.name}</TableCell>
-                    <TableCell>{pc.user}</TableCell>
-                    <TableCell>{pc.email}</TableCell>
-                    <TableCell className="font-semibold">{amount}</TableCell>
-                    <TableCell>{timeInfo}</TableCell>
-                    <TableCell className="text-right">
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleOpenInvoiceDialog(pc)}
-                        >
-                            <Mail className="mr-2 h-4 w-4" />
-                            Manage Invoice
-                        </Button>
-                    </TableCell>
-                  </TableRow>
-                );
-              }) : (
-                <TableRow>
-                    <TableCell colSpan={6} className="text-center h-24">
-                        No active sessions with user emails available for invoicing.
-                    </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-
-      <Dialog open={!!invoicePc} onOpenChange={() => { setInvoicePc(null); setInvoiceContent(null); }}>
-        <DialogContent className="sm:max-w-[600px]">
-          <DialogHeader>
-            <DialogTitle>Email Invoice</DialogTitle>
-            <DialogDescription>
-              Preview and edit the invoice email for {invoicePc?.user} ({invoicePc?.email}).
-            </DialogDescription>
-          </DialogHeader>
-          {isGenerating ? (
-            <div className='flex items-center justify-center h-64'>
-                <Loader className='h-8 w-8 animate-spin text-primary'/>
-            </div>
-          ) : invoiceContent && (
-            <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="subject" className="text-right">Subject</Label>
-                    <Input
-                        id="subject"
-                        value={invoiceContent.emailSubject}
-                        onChange={(e) => setInvoiceContent(prev => prev ? {...prev, emailSubject: e.target.value} : null)}
-                        className="col-span-3"
-                    />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="body" className="text-right">Body</Label>
-                    <Textarea
-                        id="body"
-                        value={invoiceContent.emailBody}
-                        onChange={(e) => setInvoiceContent(prev => prev ? {...prev, emailBody: e.target.value} : null)}
-                        className="col-span-3 min-h-[250px]"
-                    />
-                </div>
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setInvoicePc(null)}>Cancel</Button>
-            <Button onClick={handleSendInvoice} disabled={isSending || isGenerating || !invoiceContent}>
-              {isSending ? <Loader className="animate-spin mr-2"/> : <Send className="mr-2" />}
-              {isSending ? 'Sending...' : 'Send Invoice'}
+        <div className="space-y-2">
+          <Label htmlFor="subject">Email Subject</Label>
+          <Input
+            id="subject"
+            value={subject}
+            onChange={(e) => setSubject(e.target.value)}
+            placeholder="Your Invoice from {{companyName}}"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="body">Email Body</Label>
+          <Textarea
+            id="body"
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            className="min-h-[300px] font-mono"
+            placeholder="Hello {{customerName}}, here is your invoice..."
+          />
+        </div>
+        <div className="flex justify-end">
+            <Button onClick={handleSaveTemplate} disabled={isSaving}>
+                {isSaving ? <Loader className="animate-spin mr-2"/> : <Save className="mr-2" />}
+                {isSaving ? 'Saving...' : 'Save Template'}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

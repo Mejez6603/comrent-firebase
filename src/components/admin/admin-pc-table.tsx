@@ -61,7 +61,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
   } from "@/components/ui/dropdown-menu";
-import { generateInvoiceEmail, sendGeneratedEmail, GenerateInvoiceEmailOutput } from '@/ai/flows/send-invoice-email';
+import { sendGeneratedEmail, type SendGeneratedEmailInput } from '@/ai/flows/send-invoice-email';
 import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 
@@ -122,13 +122,18 @@ type AdminPcTableProps = {
     pricingTiers: PricingTier[];
 }
 
+type PreviewInvoice = {
+    subject: string;
+    body: string;
+}
+
 export function AdminPcTable({ pcs, setPcs, addAuditLog, onRefresh, isRefreshing, pricingTiers }: AdminPcTableProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<PC | null>(null);
   
   const [invoicePc, setInvoicePc] = useState<PC | null>(null);
-  const [invoiceContent, setInvoiceContent] = useState<GenerateInvoiceEmailOutput | null>(null);
+  const [invoiceContent, setInvoiceContent] = useState<PreviewInvoice | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSending, setIsSending] = useState(false);
   
@@ -238,17 +243,25 @@ export function AdminPcTable({ pcs, setPcs, addAuditLog, onRefresh, isRefreshing
     };
 
     try {
-        const content = await generateInvoiceEmail({
-            customerName: pc.user,
-            pcName: pc.name,
-            duration: durationInfo.label,
-            amount: `₱${durationInfo.price.toFixed(2)}`,
-            companyName: 'ComRent',
-        });
-        setInvoiceContent(content);
+        const templateResponse = await fetch('/api/email-template');
+        if (!templateResponse.ok) throw new Error('Failed to fetch email template.');
+        const template: { subject: string, body: string } = await templateResponse.json();
+
+        // Replace placeholders
+        const populatedBody = template.body
+            .replace(/{{customerName}}/g, pc.user || 'Valued Customer')
+            .replace(/{{pcName}}/g, pc.name)
+            .replace(/{{duration}}/g, durationInfo.label)
+            .replace(/{{amount}}/g, `₱${durationInfo.price.toFixed(2)}`)
+            .replace(/{{companyName}}/g, 'ComRent');
+
+        const populatedSubject = template.subject
+            .replace(/{{companyName}}/g, 'ComRent');
+
+        setInvoiceContent({ subject: populatedSubject, body: populatedBody });
     } catch (error) {
         console.error("Failed to generate invoice content:", error);
-        toast({ variant: 'destructive', title: 'AI Error', description: 'Could not generate email content.' });
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not load email content.' });
         setInvoicePc(null);
     } finally {
         setIsGenerating(false);
@@ -262,8 +275,8 @@ export function AdminPcTable({ pcs, setPcs, addAuditLog, onRefresh, isRefreshing
     try {
         const result = await sendGeneratedEmail({
             customerEmail: invoicePc.email,
-            emailSubject: invoiceContent.emailSubject,
-            emailBody: invoiceContent.emailBody,
+            emailSubject: invoiceContent.subject,
+            emailBody: invoiceContent.body,
             fromAddress: 'ComRent <onboarding@resend.dev>'
         });
 
@@ -408,13 +421,17 @@ export function AdminPcTable({ pcs, setPcs, addAuditLog, onRefresh, isRefreshing
                             {ALL_STATUSES.map(status => {
                                 const statusConf = statusConfig[status];
                                 const StatusIcon = statusConf.icon;
+                                
                                 const isPendingApproval = pc.status === 'pending_approval';
                                 const isInUse = pc.status === 'in_use';
 
-                                const isDisabled = pc.status === status || 
-                                    (isPendingApproval && status !== 'in_use' && status !== 'available') ||
-                                    (isInUse && status !== 'time_up');
-
+                                let isDisabled = pc.status === status;
+                                if (isPendingApproval) {
+                                    isDisabled = status !== 'in_use' && status !== 'available';
+                                } else if (isInUse) {
+                                    isDisabled = status !== 'time_up';
+                                }
+                                
                                 return (
                                     <DropdownMenuItem key={status} onClick={() => handleStatusChange(pc.id, status)} disabled={isDisabled}>
                                         <StatusIcon className="mr-2 h-4 w-4" />
@@ -511,8 +528,8 @@ export function AdminPcTable({ pcs, setPcs, addAuditLog, onRefresh, isRefreshing
                     <Label htmlFor="subject" className="text-right">Subject</Label>
                     <Input
                         id="subject"
-                        value={invoiceContent.emailSubject}
-                        onChange={(e) => setInvoiceContent(prev => prev ? {...prev, emailSubject: e.target.value} : null)}
+                        value={invoiceContent.subject}
+                        onChange={(e) => setInvoiceContent(prev => prev ? {...prev, subject: e.target.value} : null)}
                         className="col-span-3"
                     />
                 </div>
@@ -520,8 +537,8 @@ export function AdminPcTable({ pcs, setPcs, addAuditLog, onRefresh, isRefreshing
                     <Label htmlFor="body" className="text-right">Body</Label>
                     <Textarea
                         id="body"
-                        value={invoiceContent.emailBody}
-                        onChange={(e) => setInvoiceContent(prev => prev ? {...prev, emailBody: e.target.value} : null)}
+                        value={invoiceContent.body}
+                        onChange={(e) => setInvoiceContent(prev => prev ? {...prev, body: e.target.value} : null)}
                         className="col-span-3 min-h-[250px]"
                     />
                 </div>
