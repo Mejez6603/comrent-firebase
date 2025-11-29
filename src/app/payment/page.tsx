@@ -131,20 +131,22 @@ function PaymentForm() {
     const storedUserDetailsRaw = localStorage.getItem(`session-details-${pc.name}`);
     const storedUserDetails = storedUserDetailsRaw ? JSON.parse(storedUserDetailsRaw) : null;
   
-    // This hook is responsible for managing the UI step based on the PC status
     switch(pc.status) {
         case 'in_use':
             if (pc.session_start && pc.session_duration && storedUserDetails) {
                 setStep('in_session');
                 const startTime = new Date(pc.session_start);
-                setSessionEndTime(add(startTime, { minutes: pc.session_duration }));
+                const endTime = add(startTime, { minutes: pc.session_duration });
+                setSessionEndTime(endTime);
             }
             break;
         case 'time_up':
-            setStep('session_ended');
-            setTimeRemaining('00:00:00');
-            startAlarm();
-            setIsSessionEndModalOpen(true);
+            if (step !== 'session_ended') {
+                setStep('session_ended');
+                setTimeRemaining('00:00:00');
+                startAlarm();
+                setIsSessionEndModalOpen(true);
+            }
             break;
         case 'pending_approval':
              if (storedUserDetails) {
@@ -155,9 +157,7 @@ function PaymentForm() {
             setStep('selection');
             break;
         case 'available':
-            // This case handles when an admin cancels a request
-            const previousStep = step;
-            if (previousStep === 'pending_approval' || previousStep === 'pending_payment') {
+            if (step === 'pending_approval' || step === 'pending_payment') {
                 localStorage.removeItem(`session-details-${pc.name}`);
                 toast({ title: 'Request Cancelled', description: 'Your rental request was cancelled by an admin.' });
                 router.push('/');
