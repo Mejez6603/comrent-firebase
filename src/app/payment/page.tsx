@@ -34,6 +34,7 @@ import { PaymentHelpPopover } from '@/components/payment-help-popover';
 import { useAlarm } from '@/hooks/use-alarm';
 import { SessionEndedDialog } from '@/components/session-ended-dialog';
 import { ChatProvider, useChat } from '@/hooks/use-chat';
+import { ChatButton } from '@/components/chat-button';
 import gcashQr from '@/qr code images/gcash.png';
 import mayaQr from '@/qr code images/maya.png';
 import paypalQr from '@/qr code images/paypal.png';
