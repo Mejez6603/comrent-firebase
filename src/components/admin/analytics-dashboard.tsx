@@ -1,6 +1,6 @@
 'use client';
 import { useMemo, useState, useEffect } from 'react';
-import type { PC, PricingTier, PaymentMethod } from '@/lib/types';
+import type { PC, PricingTier } from '@/lib/types';
 import { Users, DollarSign, Clock, Computer, Calendar as CalendarIcon, ArrowDown, ArrowUp } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import {
@@ -29,8 +29,6 @@ type AnalyticsDashboardProps = {
   historicalSessions: PC[];
   pricingTiers: PricingTier[];
 };
-
-const PIE_CHART_COLORS = ["hsl(var(--chart-1))", "hsl(var(--chart-2))", "hsl(var(--chart-3))", "hsl(var(--chart-4))", "hsl(var(--chart-5))"];
 
 
 export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: AnalyticsDashboardProps) {
@@ -82,6 +80,17 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
   }, [allSessions, pricingTiers, date]);
 
   const activePcsCount = pcs.filter(pc => pc.status === 'in_use').length;
+
+  const chartConfig = {
+    revenue: {
+      label: "Revenue (₱)",
+      color: "hsl(var(--chart-1))",
+    },
+    sessions: {
+      label: "Sessions",
+      color: "hsl(var(--chart-2))",
+    },
+  }
 
   return (
     <div className="space-y-4">
@@ -174,7 +183,7 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
                 <CardDescription>Revenue and sessions for each month in the selected period.</CardDescription>
             </CardHeader>
             <CardContent>
-                <ResponsiveContainer width="100%" height={350}>
+                <ChartContainer config={chartConfig} className="min-h-[300px] w-full">
                     <RechartsBarChart data={mainStats.monthlyPerformanceData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
                         <CartesianGrid vertical={false} />
                         <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={12} />
@@ -182,10 +191,10 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
                         <YAxis yAxisId="right" orientation="right" stroke="hsl(var(--chart-2))" fontSize={12} />
                         <ChartTooltip content={<ChartTooltipContent />} />
                         <Legend />
-                        <Bar yAxisId="left" dataKey="revenue" fill="hsl(var(--chart-1))" radius={[4, 4, 0, 0]} name="Revenue (₱)"/>
-                        <Bar yAxisId="right" dataKey="sessions" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} name="Sessions"/>
+                        <Bar yAxisId="left" dataKey="revenue" fill="var(--color-revenue)" radius={[4, 4, 0, 0]} name="Revenue (₱)"/>
+                        <Bar yAxisId="right" dataKey="sessions" fill="var(--color-sessions)" radius={[4, 4, 0, 0]} name="Sessions"/>
                     </RechartsBarChart>
-                </ResponsiveContainer>
+                </ChartContainer>
             </CardContent>
         </Card>
 
