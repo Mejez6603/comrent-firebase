@@ -2,11 +2,9 @@
 
 ComRent is a full-stack application designed to streamline the management of a computer rental center. It provides a real-time dashboard for monitoring PC statuses, a user-facing payment and session management interface, and a comprehensive admin panel for analytics, configuration, and control.
 
-![](images/image0001.png)
-![](images/image0002.png)
-![](images/image0003.png)
-![](images/image0004.png)
-![](images/image0005.png)
+![](images/image0000001.png)
+![](images/image0000008.png)
+![](images/image0000003.png)
 
 ## Description
 
@@ -60,20 +58,46 @@ Through this journey, we not only built a functional application but also naviga
 1.  **Select PC**: From the main grid, the user clicks an **"Available"** PC.
 2.  **Start Session**: A dialog appears. The user confirms they want to start a session, which takes them to the payment page. The PC's status changes to **"Pending Payment"**.
 3.  **Choose Duration & Payment**: The user selects their desired rental time (e.g., 1 hour) and a payment method (e.g., GCash).
+
+![](images/image0000002.png)
+
 4.  **Pay & Upload Proof**: The user scans the displayed QR code with their mobile app to pay. They then upload a screenshot of the successful transaction.
+
+![](images/image0000002.png)
+![](images/image0000003.png)
+![](images/image0000004.png)
+
 5.  **Notify Admin**: After uploading, the user clicks "I Have Sent The Payment". The PC's status changes to **"Pending Approval"**, and a notification is sent to the admin.
+
+![](images/image0000005.png)
+
+
 6.  **Session Start**: Once the admin approves the payment, the user's screen automatically updates, showing a live countdown timer. The PC's status is now **"In Use"**.
+
+
+![](images/image0000007.png)
+
 7.  **Session End**: When the timer runs out, the user is notified with an alarm, and the PC's status changes to **"Time's Up"**.
 
 ### Admin Flow
 1.  **Monitor Dashboard**: The admin views a detailed table of all PCs and their live statuses.
+
+![](images/image0000005.png)
+
 2.  **Receive Notification**: A new notification with a sound alert appears for a PC that is **"Pending Approval"**.
 3.  **Verify Payment**: The admin clicks the "Proof" icon in the table to view the user's payment screenshot in a modal window.
 4.  **Approve Session**: The admin changes the PC's status from "Pending Approval" to **"In Use"**. This action automatically starts the session timer on the user's end.
-5.  **Manage & Assist**:
-    - The admin can manually change the status of any PC (e.g., set to "Maintenance").
-    - They can communicate with users via the built-in **Chat** system.
-    - They can send a customized **Email Invoice** to the user with the payment proof attached.
+
+![](images/image00000010.png)
+
+5.  **Oversee & Manage**: Beyond the core session flow, the admin has access to a powerful suite of tools via the sidebar navigation:
+    -   **Chat**: Communicate in real-time with users to provide support or answer questions directly from the dashboard.
+    -   **Email Invoice**: Send a customized email invoice to the user with the payment proof attached for their records.
+    -   **Analytics**: Switch to the **Analytics** tab to view comprehensive charts on revenue, sessions, peak hours, payment methods, and which PCs and session durations are most popular.
+    -   **Pricing**: In the **Pricing** tab, the admin can dynamically add, edit, or delete rental duration tiers and their corresponding prices.
+    -   **Invoice Layout**: Navigate to the **Invoice Layout** tab to edit the master template used for all generated email invoices, ensuring consistent and professional branding.
+    -   **Audit Log**: The **Audit Log** provides a chronological record of all significant actions taken by the admin, such as status changes, PC additions/deletions, and template updates.
+
 6.  **Reset PC**: Once a user's session is over ("Time's Up"), the admin can reset the PC by changing its status to **"Available"**, making it ready for the next customer.
 
 ## Changelog (Recent Additions)

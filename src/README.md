@@ -70,10 +70,13 @@ Through this journey, we not only built a functional application but also naviga
 2.  **Receive Notification**: A new notification with a sound alert appears for a PC that is **"Pending Approval"**.
 3.  **Verify Payment**: The admin clicks the "Proof" icon in the table to view the user's payment screenshot in a modal window.
 4.  **Approve Session**: The admin changes the PC's status from "Pending Approval" to **"In Use"**. This action automatically starts the session timer on the user's end.
-5.  **Manage & Assist**:
-    - The admin can manually change the status of any PC (e.g., set to "Maintenance").
-    - They can communicate with users via the built-in **Chat** system.
-    - They can send a customized **Email Invoice** to the user with the payment proof attached.
+5.  **Oversee & Manage**: Beyond the core session flow, the admin has access to a powerful suite of tools via the sidebar navigation:
+    -   **Chat**: Communicate in real-time with users to provide support or answer questions directly from the dashboard.
+    -   **Email Invoice**: Send a customized email invoice to the user with the payment proof attached for their records.
+    -   **Analytics**: Switch to the **Analytics** tab to view comprehensive charts on revenue, sessions, peak hours, payment methods, and which PCs and session durations are most popular.
+    -   **Pricing**: In the **Pricing** tab, the admin can dynamically add, edit, or delete rental duration tiers and their corresponding prices.
+    -   **Invoice Layout**: Navigate to the **Invoice Layout** tab to edit the master template used for all generated email invoices, ensuring consistent and professional branding.
+    -   **Audit Log**: The **Audit Log** provides a chronological record of all significant actions taken by the admin, such as status changes, PC additions/deletions, and template updates.
 6.  **Reset PC**: Once a user's session is over ("Time's Up"), the admin can reset the PC by changing its status to **"Available"**, making it ready for the next customer.
 
 ## Changelog (Recent Additions)
