@@ -20,6 +20,7 @@ function AdminChatUI() {
   const { conversations, activeConversation, setActiveConversation, sendMessage, unreadCounts } = useChat();
   const [newMessage, setNewMessage] = useState('');
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -56,19 +57,48 @@ function AdminChatUI() {
     }
   };
 
+  const processFile = (file: File) => {
+    if (file && file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            setImagePreview(reader.result as string);
+            setNewMessage(''); // Clear text when image is selected
+        };
+        reader.readAsDataURL(file);
+    }
+  }
+
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-        setNewMessage(''); // Clear text when image is selected
-      };
-      reader.readAsDataURL(file);
+      processFile(file);
     }
     // Reset file input value to allow selecting the same file again
     if(fileInputRef.current) fileInputRef.current.value = '';
   };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+        processFile(file);
+    }
+  };
+
 
   return (
     <Popover>
@@ -83,7 +113,14 @@ function AdminChatUI() {
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[400px] h-[500px] p-0 flex" side="top" align="end">
+      <PopoverContent
+        className="w-[400px] h-[500px] p-0 flex"
+        side="top"
+        align="end"
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
         <div className="w-1/3 border-r bg-muted/50 flex flex-col">
             <div className="p-2 border-b">
                 <h4 className="font-semibold text-center">Active Chats</h4>
@@ -113,7 +150,13 @@ function AdminChatUI() {
                 )}
             </ScrollArea>
         </div>
-        <div className="w-2/3 flex flex-col">
+        <div className="w-2/3 flex flex-col relative">
+            {isDragging && (
+                <div className="absolute inset-0 z-10 bg-primary/20 border-4 border-dashed border-primary flex flex-col items-center justify-center pointer-events-none rounded-r-lg">
+                    <ImageIcon className="h-12 w-12 text-primary" />
+                    <p className="text-lg font-semibold text-primary">Drop image here</p>
+                </div>
+            )}
             {activeConversation ? (
                 <>
                     <div className="p-2 border-b flex items-center justify-between">

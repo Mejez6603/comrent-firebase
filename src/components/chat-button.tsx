@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
-import { MessageSquare, Send, Paperclip, X } from 'lucide-react';
+import { MessageSquare, Send, Paperclip, X, Image as ImageIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format, formatDistanceToNow } from 'date-fns';
 import Image from 'next/image';
@@ -19,6 +19,7 @@ export function ChatButton() {
   const [newMessage, setNewMessage] = useState('');
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const hasUnread = unreadCounts[activeConversation || ''] > 0 && !isOpen;
@@ -51,18 +52,46 @@ export function ChatButton() {
     }
   };
 
+  const processFile = (file: File) => {
+    if (file && file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            setImagePreview(reader.result as string);
+            setNewMessage(''); // Clear text when image is selected
+        };
+        reader.readAsDataURL(file);
+    }
+  }
+
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-        setNewMessage(''); // Clear text when image is selected
-      };
-      reader.readAsDataURL(file);
+      processFile(file);
     }
      // Reset file input value to allow selecting the same file again
      if(fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+        processFile(file);
+    }
   };
 
 
@@ -82,7 +111,20 @@ export function ChatButton() {
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-80 h-96 p-0 flex flex-col" side="top" align="end">
+      <PopoverContent
+        className="w-80 h-96 p-0 flex flex-col relative"
+        side="top"
+        align="end"
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
+        {isDragging && (
+            <div className="absolute inset-0 z-10 bg-primary/20 border-4 border-dashed border-primary flex flex-col items-center justify-center pointer-events-none rounded-md">
+                <ImageIcon className="h-12 w-12 text-primary" />
+                <p className="text-lg font-semibold text-primary">Drop image here</p>
+            </div>
+        )}
         <div className="p-3 border-b bg-muted/50">
           <h4 className="font-semibold text-center">Chat with Admin</h4>
         </div>
