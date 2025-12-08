@@ -164,7 +164,7 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
 
     const paymentDistributionData = Object.entries(paymentDistribution).map(([name, value]) => ({ name, value }));
     const pcPopularityData = Object.entries(pcPopularity).map(([name, sessions]) => ({ name, sessions })).sort((a,b) => b.sessions - a.sessions);
-    const durationPopularityData = Object.entries(durationPopularity).map(([name, value]) => ({ name, value }));
+    const durationPopularityData = Object.entries(durationPopularity).map(([name, sessions]) => ({ name, sessions })).sort((a,b) => b.sessions - a.sessions);
 
     return { peakHoursData, paymentDistributionData, dayType, pcPopularityData, durationPopularityData };
   }, [filteredSessions, pricingTiers]);
@@ -387,15 +387,15 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
                     <CardDescription>Usage count for each PC in the selected period.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <ChartContainer config={{ sessions: { label: 'Sessions', color: 'hsl(var(--chart-2))'}}} className="h-[250px] w-full">
-                        <RechartsBarChart data={detailedAnalytics.pcPopularityData} layout="vertical" margin={{ top: 5, right: 5, left: -10, bottom: 5 }}>
-                            <CartesianGrid horizontal={false} />
-                            <YAxis dataKey="name" type="category" stroke="hsl(var(--muted-foreground))" fontSize={10} width={50} />
-                            <XAxis dataKey="sessions" type="number" stroke="hsl(var(--muted-foreground))" fontSize={10} />
-                            <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="dot" />} />
-                            <Bar dataKey="sessions" fill="var(--color-sessions)" radius={4} />
+                     <ChartContainer config={{ sessions: { label: 'Sessions', color: 'hsl(var(--chart-1))'}}} className="h-[250px] w-full">
+                        <RechartsBarChart data={detailedAnalytics.pcPopularityData} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
+                             <CartesianGrid vertical={false} />
+                             <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={10} interval={0} />
+                             <YAxis stroke="hsl(var(--muted-foreground))" fontSize={10} />
+                             <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="dot" />} />
+                             <Bar dataKey="sessions" fill="var(--color-sessions)" radius={4} />
                         </RechartsBarChart>
-                    </ChartContainer>
+                     </ChartContainer>
                 </CardContent>
             </Card>
             <Card>
@@ -404,16 +404,14 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
                     <CardDescription>Most frequently chosen rental durations.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <ChartContainer config={{}} className="h-[250px] w-full">
-                        <RechartsPieChart>
-                            <ChartTooltip content={<ChartTooltipContent hideLabel />} />
-                            <Pie data={detailedAnalytics.durationPopularityData} dataKey="value" nameKey="name" innerRadius={50} strokeWidth={2} label>
-                                {detailedAnalytics.durationPopularityData.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={PIE_CHART_COLORS[index + 1 as keyof typeof PIE_CHART_COLORS] || '#8884d8'} />
-                                ))}
-                            </Pie>
-                            <Legend />
-                        </RechartsPieChart>
+                    <ChartContainer config={{ sessions: { label: 'Sessions', color: 'hsl(var(--chart-2))'}}} className="h-[250px] w-full">
+                        <RechartsBarChart data={detailedAnalytics.durationPopularityData} layout="vertical" margin={{ top: 5, right: 5, left: -10, bottom: 5 }}>
+                            <CartesianGrid horizontal={false} />
+                            <YAxis dataKey="name" type="category" stroke="hsl(var(--muted-foreground))" fontSize={12} width={80} interval={0} />
+                            <XAxis dataKey="sessions" type="number" stroke="hsl(var(--muted-foreground))" fontSize={10} />
+                            <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="dot" />} />
+                            <Bar dataKey="sessions" fill="var(--color-sessions)" radius={4} />
+                        </RechartsBarChart>
                     </ChartContainer>
                 </CardContent>
             </Card>
