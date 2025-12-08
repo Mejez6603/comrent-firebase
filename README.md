@@ -92,11 +92,25 @@ Through this journey, we not only built a functional application but also naviga
 
 5.  **Oversee & Manage**: Beyond the core session flow, the admin has access to a powerful suite of tools via the sidebar navigation:
     -   **Chat**: Communicate in real-time with users to provide support or answer questions directly from the dashboard.
+    ![](images/image0000009.png)
+    ![](images/image00000011.png)
+
     -   **Email Invoice**: Send a customized email invoice to the user with the payment proof attached for their records.
+    ![](images/image0000006.png)
+
     -   **Analytics**: Switch to the **Analytics** tab to view comprehensive charts on revenue, sessions, peak hours, payment methods, and which PCs and session durations are most popular.
+    ![](images/image0000008.png)
+    ![](images/image00000012.png)
+    ![](images/image00000013.png)
+
     -   **Pricing**: In the **Pricing** tab, the admin can dynamically add, edit, or delete rental duration tiers and their corresponding prices.
+    ![](images/image00000014.png)
+
     -   **Invoice Layout**: Navigate to the **Invoice Layout** tab to edit the master template used for all generated email invoices, ensuring consistent and professional branding.
+    ![](images/image00000015.png)
+
     -   **Audit Log**: The **Audit Log** provides a chronological record of all significant actions taken by the admin, such as status changes, PC additions/deletions, and template updates.
+    ![](images/image00000016.png)
 
 6.  **Reset PC**: Once a user's session is over ("Time's Up"), the admin can reset the PC by changing its status to **"Available"**, making it ready for the next customer.
 
@@ -198,6 +212,7 @@ The `package.json` `start` script is set to `next start -p $PORT`, which allows 
 -   Icons provided by [Lucide](https://lucide.dev/).
 -   Domain is powered by [Hostinger](https://www.hostinger.com/).
 -   Webhosting is powered by [Railway](https://railway.com).
+-   Version control is saved through [Github](https://github.com/) 
 
 ## License
 
