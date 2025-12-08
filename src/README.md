@@ -31,13 +31,13 @@ As the core was solidified, we integrated key services to enhance functionality:
 - **Genkit & Resend:** We implemented a Genkit flow to power our email system. This flow connects to the Resend API, allowing admins to generate and send customized invoices directly from the dashboard, complete with attached payment screenshots. This provided a seamless, professional communication channel with customers.
 - **QR Code Payments:** To enhance the realism of the payment process, we integrated QR code images for GCash, Maya, and PayPal, making the user-facing payment screen more intuitive and visually engaging.
 
-### 4. Deployment to Hostinger
-With the application ready for the world, we chose **Hostinger** as our deployment platform. The process involved:
+### 4. Deployment to Railway
+With the application ready for the world, we chose **Railway** as our deployment platform. The process involved:
 1.  Pushing the finalized code to a GitHub repository.
-2.  Connecting the repository to a new project on Hostinger.
+2.  Connecting the repository to a new project on Railway.
 3.  Configuring the environment, including setting up the necessary environment variables (`RESEND_API_KEY`, `GEMINI_API_KEY`) and build commands.
 4.  Adjusting the `package.json` `start` script to `next start -p $PORT`, a crucial step that allows the hosting provider to dynamically assign the correct port.
-5.  Triggering a deployment, which Hostinger then automatically built and launched, making the application live and accessible on the web.
+5.  Triggering a deployment, which Railway then automatically built and launched, making the application live and accessible on the web.
 
 Through this journey, we not only built a functional application but also navigated and solved complex, real-world development and deployment challenges.
 
@@ -116,7 +116,8 @@ Through this journey, we not only built a functional application but also naviga
 -   **State Management**: React Hooks (useState, useEffect, useContext)
 -   **AI Integration**: Genkit (for email generation flows)
 -   **Email Sending**: Resend
--   **Deployment**: Hostinger
+-   **Deployment**: Railway
+-   **Domain Registration**: Hostinger
 
 ## Getting Started
 
@@ -156,7 +157,7 @@ To get a local copy up and running, follow these simple steps.
 
 ## Deployment
 
-This application is configured for deployment on platforms like [Hostinger](https://www.hostinger.com/), [Railway](https://railway.app/), or [Vercel](https://vercel.com/).
+This application is configured for deployment on platforms like [Railway](https://railway.app/) or [Vercel](https://vercel.com/).
 
 The `package.json` `start` script is set to `next start -p $PORT`, which allows the hosting provider to dynamically assign the port for the application to run on. Simply connect your GitHub repository to your hosting provider of choice, and it should build and deploy automatically.
 
@@ -175,6 +176,8 @@ The `package.json` `start` script is set to `next start -p $PORT`, which allows 
 -   Charting capabilities provided by [Recharts](https://recharts.org/).
 -   Email delivery is powered by [Resend](https://resend.com/).
 -   Icons provided by [Lucide](https://lucide.dev/).
+-   Domain is powered by [Hostinger](https://www.hostinger.com/).
+-   Webhosting is powered by [Railway](https://railway.com).
 
 ## License
 
