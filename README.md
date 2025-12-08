@@ -150,6 +150,8 @@ The `package.json` `start` script is set to `next start -p $PORT`, which allows 
 -   Charting capabilities provided by [Recharts](https://recharts.org/).
 -   Email delivery is powered by [Resend](https://resend.com/).
 -   Icons provided by [Lucide](https://lucide.dev/).
+-   Domain is powered by [Hostinger](https://www.hostinger.com/).
+-   Webhosting is powered by [Railway](https://railway.com).
 
 ## License
 
