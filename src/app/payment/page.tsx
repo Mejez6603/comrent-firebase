@@ -97,7 +97,19 @@ function PaymentForm() {
         if (currentPc) {
              const validInitialStatuses = ['available', 'pending_payment', 'pending_approval', 'in_use', 'time_up'];
              if (validInitialStatuses.includes(currentPc.status)) {
-                setPc(currentPc);
+                if (currentPc.status === 'available') {
+                    // Reserve the PC immediately so no one else can take it.
+                    const reserveResponse = await fetch('/api/pc-status', {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id: currentPc.id, newStatus: 'pending_payment' })
+                    });
+                    if (!reserveResponse.ok) throw new Error('Failed to reserve PC');
+                    const reservedPc = await reserveResponse.json();
+                    setPc(reservedPc);
+                } else {
+                    setPc(currentPc);
+                }
              } else {
                 toast({ variant: "destructive", title: "PC Not Available", description: `${pcName} is currently not available for rent.` });
                 router.push('/');
