@@ -1,7 +1,7 @@
 'use client';
 import { useMemo, useState } from 'react';
 import type { PC, PricingTier, PCStatus } from '@/lib/types';
-import { Users, DollarSign, Clock, Computer, Calendar as CalendarIcon, PieChart as PieChartIcon, BarChart2, Briefcase, Coffee, TrendingUp, Tag, Percent, ArrowDown, ArrowUp } from 'lucide-react';
+import { Users, DollarSign, Clock, Computer, Calendar as CalendarIcon, PieChart as PieChartIcon, BarChart2, Briefcase, Coffee, TrendingUp, Tag, Percent, ArrowDown, ArrowUp, LineChart } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import {
   ChartContainer,
@@ -13,6 +13,8 @@ import {
   BarChart as RechartsBarChart,
   Pie,
   PieChart as RechartsPieChart,
+  Line,
+  LineChart as RechartsLineChart,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -183,7 +185,7 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
 
         const paymentDistributionData = Object.entries(paymentDistribution).map(([name, value]) => ({ name, value }));
 
-        return { peakHoursData, paymentDistributionData, dayType, pcUsageByDurationData: Object.values(pcUsageByDuration) };
+        return { peakHoursData, paymentDistributionData, dayType, pcUsageByDurationData: Object.values(pcUsageByDuration).sort((a,b) => a.name.localeCompare(b.name)) };
     }, [filteredSessions, pricingTiers]);
 
 
@@ -399,27 +401,28 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
 
             <Card>
                 <CardHeader>
-                    <CardTitle className="flex items-center"><Computer className="mr-2 h-5 w-5" />Session Duration per PC</CardTitle>
+                    <CardTitle className="flex items-center"><LineChart className="mr-2 h-5 w-5" />Session Duration per PC</CardTitle>
                     <CardDescription>Breakdown of popular session times on each computer.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <ChartContainer config={{}} className="h-[300px] w-full">
-                        <RechartsBarChart data={detailedAnalytics.pcUsageByDurationData} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
+                        <RechartsLineChart data={detailedAnalytics.pcUsageByDurationData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
                             <CartesianGrid vertical={false} />
-                            <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={10} interval={0} />
+                            <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={10} interval={0} tick={{ angle: -45, textAnchor: 'end' }} />
                             <YAxis stroke="hsl(var(--muted-foreground))" fontSize={10} />
-                            <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="dot" />} />
+                            <ChartTooltip cursor={true} content={<ChartTooltipContent indicator="dot" />} />
                             <Legend />
                             {pricingTiers.map((tier, i) => (
-                                <Bar 
+                                <Line 
                                     key={tier.value}
                                     dataKey={tier.label}
-                                    fill={DURATION_COLORS[i % DURATION_COLORS.length]}
-                                    radius={4} 
-                                    stackId="a"
+                                    type="monotone"
+                                    stroke={DURATION_COLORS[i % DURATION_COLORS.length]}
+                                    strokeWidth={2}
+                                    dot={false}
                                 />
                             ))}
-                        </RechartsBarChart>
+                        </RechartsLineChart>
                     </ChartContainer>
                 </CardContent>
             </Card>
