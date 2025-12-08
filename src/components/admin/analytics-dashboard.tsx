@@ -258,8 +258,8 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
                             <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickFormatter={(val) => typeof val === 'number' && val > 1000 ? `₱${(val/1000).toFixed(0)}k`: val}/>
                             <ChartTooltip content={<ChartTooltipContent />} />
                             <Legend />
-                            <Bar dataKey="primary" fill="hsl(var(--chart-1))" radius={[4, 4, 0, 0]} name={date?.from ? `${format(date.from, 'LLL dd')} - ${format(date.to ?? date.from, 'LLL dd')}` : 'Primary'}/>
-                            <Bar dataKey="secondary" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} name={compareDate?.from ? `${format(compareDate.from, 'LLL dd')} - ${format(compareDate.to ?? compareDate.from, 'LLL dd')}` : 'Secondary'}/>
+                            <Bar dataKey="primary" fill="hsl(var(--chart-1))" radius={[4, 4, 0, 0]} name={date?.from ? `${format(date.from, 'LLL dd')} - ${date.to ? format(date.to, 'LLL dd') : ''}` : 'Primary'}/>
+                            <Bar dataKey="secondary" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} name={compareDate?.from ? `${format(compareDate.from, 'LLL dd')} - ${compareDate.to ? format(compareDate.to, 'LLL dd') : ''}` : 'Secondary'}/>
                         </RechartsBarChart>
                     </ChartContainer>
                 </CardContent>
