@@ -1,7 +1,7 @@
 'use client';
-import { useMemo, useState, useEffect } from 'react';
-import type { PC, PricingTier } from '@/lib/types';
-import { Users, DollarSign, Clock, Computer, Calendar as CalendarIcon } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import type { PC, PricingTier, PCStatus } from '@/lib/types';
+import { Users, DollarSign, Clock, Computer, Calendar as CalendarIcon, PieChart as PieChartIcon, BarChart2, Briefcase, Coffee } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import {
   ChartContainer,
@@ -11,11 +11,14 @@ import {
 import {
   Bar,
   BarChart as RechartsBarChart,
+  Pie,
+  PieChart as RechartsPieChart,
   XAxis,
   YAxis,
   CartesianGrid,
   ResponsiveContainer,
   Legend,
+  Cell,
 } from 'recharts';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
@@ -31,6 +34,36 @@ type AnalyticsDashboardProps = {
 };
 
 
+const PIE_CHART_COLORS = {
+    'GCash': 'hsl(var(--chart-1))',
+    'Maya': 'hsl(var(--chart-2))',
+    'QR Code': 'hsl(var(--chart-3))',
+    
+    'available': 'hsl(var(--status-online))',
+    'in_use': 'hsl(var(--status-using))',
+    'pending_payment': 'hsl(var(--status-pending))',
+    'pending_approval': 'hsl(var(--chart-4))',
+    'maintenance': '#808080',
+    'unavailable': 'hsl(var(--status-unavailable))',
+    'time_up': 'hsl(var(--destructive))',
+};
+
+const CustomPieLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, name }: any) => {
+    const RADIAN = Math.PI / 180;
+    const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+    const x = cx + radius * Math.cos(-midAngle * RADIAN);
+    const y = cy + radius * Math.sin(-midAngle * RADIAN);
+
+    if (percent < 0.05) return null; // Don't render label for small slices
+
+    return (
+        <text x={x} y={y} fill="white" textAnchor="middle" dominantBaseline="central" className="text-xs font-bold">
+            {`${(percent * 100).toFixed(0)}%`}
+        </text>
+    );
+};
+
+
 export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: AnalyticsDashboardProps) {
   const [date, setDate] = useState<DateRange | undefined>({
     from: startOfDay(subMonths(new Date(), 5)),
@@ -42,18 +75,23 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
   }, [historicalSessions, pcs]);
 
 
-  const mainStats = useMemo(() => {
-    if (!date?.from) return { totalRevenue: 0, totalSessions: 0, averageSessionMinutes: 0, monthlyPerformanceData: [] };
+  const { filteredSessions, fromDate, toDate } = useMemo(() => {
+    if (!date?.from) return { filteredSessions: [], fromDate: new Date(), toDate: new Date() };
     
-    const fromDate = startOfDay(date.from);
-    const toDate = date.to ? startOfDay(addDays(date.to, 1)) : startOfDay(addDays(new Date(), 1));
+    const from = startOfDay(date.from);
+    const to = date.to ? startOfDay(addDays(date.to, 1)) : startOfDay(addDays(new Date(), 1));
 
-    const filteredSessions = allSessions.filter(pc => {
+    const sessions = allSessions.filter(pc => {
         if (!pc.session_start) return false;
         const sessionDate = new Date(pc.session_start);
-        return sessionDate >= fromDate && sessionDate < toDate;
+        return sessionDate >= from && sessionDate < to;
     });
 
+    return { filteredSessions: sessions, fromDate: from, toDate: to };
+  }, [allSessions, date]);
+
+
+  const mainStats = useMemo(() => {
     const totalRevenue = filteredSessions.reduce((acc, pc) => {
         const durationInfo = pricingTiers.find(d => d.value === String(pc.session_duration));
         return acc + (durationInfo?.price || 0);
@@ -62,7 +100,12 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
     const totalSessions = filteredSessions.length;
     const averageSessionMinutes = totalSessions > 0 ? filteredSessions.reduce((acc, pc) => acc + (pc.session_duration || 0), 0) / totalSessions : 0;
     
-    const monthlyPerformance = filteredSessions.reduce((acc, session) => {
+    return { totalRevenue, totalSessions, averageSessionMinutes };
+  }, [filteredSessions, pricingTiers]);
+
+
+  const monthlyPerformance = useMemo(() => {
+    const performance = filteredSessions.reduce((acc, session) => {
         if (!session.session_start) return acc;
         const month = format(new Date(session.session_start), 'MMM yyyy');
         const durationInfo = pricingTiers.find(d => d.value === String(session.session_duration));
@@ -74,23 +117,62 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
         acc[month].sessions += 1;
         return acc;
     }, {} as Record<string, { month: string, revenue: number, sessions: number }>);
-    const monthlyPerformanceData = Object.values(monthlyPerformance).sort((a,b) => new Date(a.month).getTime() - new Date(b.month).getTime());
+    
+    return Object.values(performance).sort((a,b) => new Date(a.month).getTime() - new Date(b.month).getTime());
+  }, [filteredSessions, pricingTiers]);
 
-    return { totalRevenue, totalSessions, averageSessionMinutes, monthlyPerformanceData };
-  }, [allSessions, pricingTiers, date]);
+
+  const detailedAnalytics = useMemo(() => {
+    const paymentDistribution = filteredSessions.reduce((acc, session) => {
+        if (session.paymentMethod) {
+            acc[session.paymentMethod] = (acc[session.paymentMethod] || 0) + 1;
+        }
+        return acc;
+    }, {} as Record<string, number>);
+
+    const peakHours = filteredSessions.reduce((acc, session) => {
+        if (session.session_start) {
+            const hour = new Date(session.session_start).getHours();
+            acc[hour] = (acc[hour] || 0) + 1;
+        }
+        return acc;
+    }, {} as Record<number, number>);
+
+    const dayType = filteredSessions.reduce((acc, session) => {
+        if (session.session_start) {
+            const day = new Date(session.session_start).getDay();
+            const type = (day === 0 || day === 6) ? 'weekend' : 'weekday';
+            acc[type] = (acc[type] || 0) + 1;
+        }
+        return acc;
+    }, { weekday: 0, weekend: 0});
+    
+    const peakHoursData = Array.from({ length: 24 }, (_, i) => ({
+        hour: `${i.toString().padStart(2, '0')}:00`,
+        sessions: peakHours[i] || 0,
+    }));
+
+    const paymentDistributionData = Object.entries(paymentDistribution).map(([name, value]) => ({ name, value }));
+
+    return { peakHoursData, paymentDistributionData, dayType };
+  }, [filteredSessions]);
+
+
+  const liveStatusDistribution = useMemo(() => {
+    const statusCounts = pcs.reduce((acc, pc) => {
+        acc[pc.status] = (acc[pc.status] || 0) + 1;
+        return acc;
+    }, {} as Record<PCStatus, number>);
+
+    return Object.entries(statusCounts).map(([name, value]) => ({ name: name.replace(/_/g, ' '), value })) as { name: string; value: number }[];
+  }, [pcs]);
 
   const activePcsCount = pcs.filter(pc => pc.status === 'in_use').length;
 
   const chartConfig = {
-    revenue: {
-      label: "Revenue (₱)",
-      color: "hsl(var(--chart-1))",
-    },
-    sessions: {
-      label: "Sessions",
-      color: "hsl(var(--chart-2))",
-    },
-  }
+    revenue: { label: "Revenue (₱)", color: "hsl(var(--chart-1))" },
+    sessions: { label: "Sessions", color: "hsl(var(--chart-2))" },
+  };
 
   return (
     <div className="space-y-4">
@@ -183,8 +265,8 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
                 <CardDescription>Revenue and sessions for each month in the selected period.</CardDescription>
             </CardHeader>
             <CardContent>
-                <ChartContainer config={chartConfig} className="h-[300px] w-full">
-                    <RechartsBarChart data={mainStats.monthlyPerformanceData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
+                <ChartContainer config={chartConfig} className="h-[250px] w-full">
+                    <RechartsBarChart data={monthlyPerformance} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
                         <CartesianGrid vertical={false} />
                         <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={12} />
                         <YAxis yAxisId="left" stroke="hsl(var(--chart-1))" fontSize={12} tickFormatter={(val) => `₱${(val/1000).toFixed(0)}k`} />
@@ -197,7 +279,87 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
                 </ChartContainer>
             </CardContent>
         </Card>
+        
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+             <Card className="lg:col-span-1">
+                <CardHeader>
+                    <CardTitle className="flex items-center"><BarChart2 className="mr-2 h-5 w-5" />Peak Hours</CardTitle>
+                    <CardDescription>Busiest hours in the selected period.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                     <ChartContainer config={{ sessions: { label: 'Sessions', color: 'hsl(var(--chart-1))'}}} className="h-[250px] w-full">
+                        <RechartsBarChart data={detailedAnalytics.peakHoursData} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
+                             <CartesianGrid vertical={false} />
+                             <XAxis dataKey="hour" stroke="hsl(var(--muted-foreground))" fontSize={10} interval={2} />
+                             <YAxis stroke="hsl(var(--muted-foreground))" fontSize={10} />
+                             <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="dot" />} />
+                             <Bar dataKey="sessions" fill="var(--color-sessions)" radius={4} />
+                        </RechartsBarChart>
+                     </ChartContainer>
+                </CardContent>
+            </Card>
+
+            <div className="flex flex-col gap-4">
+                 <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center"><Coffee className="mr-2 h-5 w-5" />Day Type Activity</CardTitle>
+                        <CardDescription>Session counts for weekdays vs. weekends.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="grid grid-cols-2 gap-4">
+                        <div className="text-center p-4 rounded-lg bg-muted">
+                            <Briefcase className="h-6 w-6 mx-auto text-muted-foreground" />
+                            <p className="text-2xl font-bold mt-2">{detailedAnalytics.dayType.weekday}</p>
+                            <p className="text-sm text-muted-foreground">Weekday Sessions</p>
+                        </div>
+                        <div className="text-center p-4 rounded-lg bg-muted">
+                            <Users className="h-6 w-6 mx-auto text-muted-foreground" />
+                            <p className="text-2xl font-bold mt-2">{detailedAnalytics.dayType.weekend}</p>
+                            <p className="text-sm text-muted-foreground">Weekend Sessions</p>
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center"><PieChartIcon className="mr-2 h-5 w-5" />Payment Methods</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <ChartContainer config={{}} className="h-[130px] w-full">
+                           <RechartsPieChart>
+                                <ChartTooltip content={<ChartTooltipContent hideLabel />} />
+                                <Pie data={detailedAnalytics.paymentDistributionData} dataKey="value" nameKey="name" innerRadius={30} strokeWidth={2} labelLine={false} label={<CustomPieLabel />}>
+                                    {detailedAnalytics.paymentDistributionData.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={PIE_CHART_COLORS[entry.name as keyof typeof PIE_CHART_COLORS] || '#8884d8'} />
+                                    ))}
+                                </Pie>
+                                <Legend iconSize={10} />
+                           </RechartsPieChart>
+                        </ChartContainer>
+                    </CardContent>
+                </Card>
+            </div>
+             <Card className="lg:col-span-1">
+                <CardHeader>
+                    <CardTitle className="flex items-center"><Computer className="mr-2 h-5 w-5" />Live PC Status</CardTitle>
+                    <CardDescription>Current distribution of PC statuses.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                     <ChartContainer config={{}} className="h-[250px] w-full">
+                           <RechartsPieChart>
+                                <ChartTooltip content={<ChartTooltipContent hideLabel />} />
+                                <Pie data={liveStatusDistribution} dataKey="value" nameKey="name" innerRadius={60} strokeWidth={2}>
+                                    {liveStatusDistribution.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={PIE_CHART_COLORS[entry.name.replace(/ /g,'_') as keyof typeof PIE_CHART_COLORS] || '#8884d8'} />
+                                    ))}
+                                </Pie>
+                                <Legend />
+                           </RechartsPieChart>
+                        </ChartContainer>
+                </CardContent>
+            </Card>
+        </div>
 
     </div>
   );
 }
+
+    
