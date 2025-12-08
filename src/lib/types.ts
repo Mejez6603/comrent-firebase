@@ -18,6 +18,7 @@ export interface PC {
   session_start?: string;
   session_duration?: number;
   paymentMethod?: PaymentMethod;
+  paymentScreenshotUrl?: string;
 }
 
 export interface PricingTier {

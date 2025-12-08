@@ -109,7 +109,7 @@ export async function POST(request: Request) {
 
 export async function PUT(request: Request) {
     try {
-      const { id, newStatus, newName, duration, user, email, paymentMethod } = await request.json();
+      const { id, newStatus, newName, duration, user, email, paymentMethod, paymentScreenshotUrl } = await request.json();
   
       if (!id) {
         return NextResponse.json({ message: 'Missing PC ID' }, { status: 400 });
@@ -151,6 +151,7 @@ export async function PUT(request: Request) {
         pcs[pcIndex].email = email;
         pcs[pcIndex].session_duration = duration;
         pcs[pcIndex].paymentMethod = paymentMethod;
+        pcs[pcIndex].paymentScreenshotUrl = paymentScreenshotUrl;
         pcs[pcIndex].session_start = undefined; // Clear start time until approved
       
       } else if (newStatus === 'time_up') {
@@ -167,6 +168,7 @@ export async function PUT(request: Request) {
             pcs[pcIndex].session_duration = duration;
         }
         pcs[pcIndex].session_start = undefined;
+        pcs[pcIndex].paymentScreenshotUrl = undefined;
         
       } else if (['available', 'maintenance', 'unavailable'].includes(newStatus || '')) {
         // Clear all session-related data when resetting the PC
@@ -175,6 +177,7 @@ export async function PUT(request: Request) {
         pcs[pcIndex].session_duration = undefined;
         pcs[pcIndex].email = undefined;
         pcs[pcIndex].paymentMethod = undefined;
+        pcs[pcIndex].paymentScreenshotUrl = undefined;
         
         // If the previous status was 'time_up', clear the chat messages for this PC
         if (previousStatus === 'time_up') {

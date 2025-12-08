@@ -1,5 +1,6 @@
 'use client';
 import type { PC, PCStatus, PaymentMethod, PricingTier } from '@/lib/types';
+import Image from 'next/image';
 import {
   Table,
   TableBody,
@@ -25,11 +26,11 @@ import {
     Mail,
     Send,
     Loader,
-    FileText,
     CreditCard,
     RefreshCw,
     PlusCircle,
-    Clock
+    Clock,
+    Receipt
   } from 'lucide-react';
 import type { FC } from 'react';
 import { useState } from 'react';
@@ -135,6 +136,8 @@ export function AdminPcTable({ pcs, setPcs, addAuditLog, onRefresh, isRefreshing
   const [isAddPcDialogOpen, setIsAddPcDialogOpen] = useState(false);
   const [newPcName, setNewPcName] = useState('');
   const [isAddingPc, setIsAddingPc] = useState(false);
+
+  const [screenshotToView, setScreenshotToView] = useState<string | null>(null);
 
   const { toast } = useToast();
 
@@ -283,7 +286,7 @@ export function AdminPcTable({ pcs, setPcs, addAuditLog, onRefresh, isRefreshing
             customerEmail: invoicePc.email,
             emailSubject: invoiceContent.emailSubject,
             emailBody: invoiceContent.emailBody,
-            fromAddress: 'ComRent <noreply@yourdomain.com>'
+            fromAddress: 'ComRent <noreply@your-verified-domain.com>'
         });
 
         if (result && result.success) {
@@ -343,7 +346,7 @@ export function AdminPcTable({ pcs, setPcs, addAuditLog, onRefresh, isRefreshing
         badgeClass = 'bg-green-800 hover:bg-green-800';
         break;
       case 'QR Code':
-        badgeClass = 'bg-red-600 hover:bg-red-600';
+        badgeClass = 'bg-black hover:bg-black';
         break;
       default:
         badgeClass = 'bg-gray-500 hover:bg-gray-500';
@@ -383,6 +386,7 @@ export function AdminPcTable({ pcs, setPcs, addAuditLog, onRefresh, isRefreshing
                 <TableHead>Email</TableHead>
                 <TableHead>Payment Method</TableHead>
                 <TableHead>Amount</TableHead>
+                <TableHead>Proof</TableHead>
                 <TableHead>Time Remaining</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -466,6 +470,15 @@ export function AdminPcTable({ pcs, setPcs, addAuditLog, onRefresh, isRefreshing
                         <PaymentMethodBadge method={pc.paymentMethod} />
                     </TableCell>
                     <TableCell className="font-semibold">{amount}</TableCell>
+                    <TableCell>
+                      {pc.paymentScreenshotUrl ? (
+                        <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setScreenshotToView(pc.paymentScreenshotUrl!)}>
+                          <Receipt className="h-4 w-4" />
+                        </Button>
+                      ) : (
+                        '-'
+                      )}
+                    </TableCell>
                     <TableCell>{timeRemaining}</TableCell>
                     <TableCell className="text-right">
                         <div className="flex gap-1 justify-end">
@@ -589,6 +602,17 @@ export function AdminPcTable({ pcs, setPcs, addAuditLog, onRefresh, isRefreshing
                     {isAddingPc ? 'Adding...' : 'Add PC'}
                 </Button>
             </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!screenshotToView} onOpenChange={() => setScreenshotToView(null)}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Payment Screenshot</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <Image src={screenshotToView!} alt="Payment Screenshot" width={800} height={600} className="rounded-md w-full h-auto" />
+          </div>
         </DialogContent>
       </Dialog>
     </>

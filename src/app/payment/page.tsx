@@ -2,9 +2,10 @@
 
 'use client';
 
-import { Suspense, useState, useMemo, useEffect, useCallback } from 'react';
+import { Suspense, useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import {
   Card,
   CardContent,
@@ -23,7 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ArrowLeft, Clock, Mail, User, CheckCircle, Loader, Send, Hourglass, PlusCircle, AlertCircle, XCircle } from 'lucide-react';
+import { ArrowLeft, Clock, Mail, User, CheckCircle, Loader, Send, Hourglass, PlusCircle, AlertCircle, XCircle, Upload, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { PC, PaymentMethod, PricingTier } from '@/lib/types';
@@ -41,13 +42,13 @@ type PaymentStep = 'selection' | 'pending_approval' | 'in_session' | 'session_en
 const paymentMethodColors: Record<PaymentMethod, string> = {
     GCash: 'bg-blue-500',
     Maya: 'bg-green-900',
-    'QR Code': 'bg-red-600',
+    'QR Code': 'bg-black',
 };
 
 function PaymentForm() {
   const router = useRouter();
   const { toast } = useToast();
-  const { pc, setPc, pcName } = useChat();
+  const { pc, setPc, pcName, sendMessage } = useChat();
 
   const [duration, setDuration] = useState('');
   const [name, setName] = useState('');
@@ -63,6 +64,10 @@ function PaymentForm() {
 
   const [isSessionEndModalOpen, setIsSessionEndModalOpen] = useState(false);
   const { startAlarm, stopAlarm } = useAlarm();
+  
+  const [screenshot, setScreenshot] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
 
   const selectedDuration = useMemo(
@@ -241,9 +246,43 @@ function PaymentForm() {
   const handlePaymentMethodSelect = (method: PaymentMethod) => {
     setSelectedPaymentMethod(method);
   };
+  
+  const processFile = (file: File) => {
+    if (file && file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            setScreenshot(reader.result as string);
+        };
+        reader.readAsDataURL(file);
+    } else {
+        toast({ variant: 'destructive', title: 'Invalid File', description: 'Please upload an image file.'})
+    }
+  }
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      processFile(file);
+    }
+    if(fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault(); e.stopPropagation(); setIsDragging(true);
+  };
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault(); e.stopPropagation(); setIsDragging(false);
+  };
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault(); e.stopPropagation();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) { processFile(file); }
+  };
+
 
   const handleSendPayment = async () => {
-    if (!pc || !selectedDuration || !selectedPaymentMethod) return;
+    if (!pc || !selectedDuration || !selectedPaymentMethod || !screenshot) return;
 
     setIsProcessing(true);
     try {
@@ -264,11 +303,15 @@ function PaymentForm() {
                 user: sessionDetails.user,
                 email: sessionDetails.email,
                 paymentMethod: selectedPaymentMethod,
+                paymentScreenshotUrl: screenshot,
             })
         });
 
         if (!response.ok) throw new Error('Failed to send payment notification');
         
+        // Auto-send screenshot to chat for confirmation
+        sendMessage(screenshot, 'image');
+
         const updatedPc = await response.json();
         setPc(updatedPc);
         toast({
@@ -450,19 +493,46 @@ function PaymentForm() {
                     </div>
                     <div className="flex flex-col justify-between space-y-6">
                         {selectedPaymentMethod ? (
-                             <div className="space-y-6 animate-in fade-in-50">
+                             <div className="space-y-4 animate-in fade-in-50">
                                 <div className='text-center'>
                                     <p className='text-muted-foreground'>Scan to pay via <span className='font-bold'>{selectedPaymentMethod}</span></p>
                                     <p className="text-4xl font-bold pt-2">₱{selectedDuration?.price.toFixed(2)}</p>
                                 </div>
-                                <div className={cn("w-64 h-64 mx-auto rounded-lg shadow-inner flex items-center justify-center", paymentMethodColors[selectedPaymentMethod])}>
+                                <div className={cn("w-48 h-48 mx-auto rounded-lg shadow-inner flex items-center justify-center", paymentMethodColors[selectedPaymentMethod])}>
                                     <p className='text-white/80 font-mono text-sm'>[QR CODE]</p>
                                 </div>
-                                <Button size="lg" className="w-full font-bold" onClick={handleSendPayment} disabled={isProcessing}>
+                                <div 
+                                    className={cn(
+                                        "relative border-2 border-dashed rounded-lg p-4 text-center cursor-pointer hover:border-primary",
+                                        isDragging && "border-primary bg-primary/10"
+                                    )}
+                                    onClick={() => fileInputRef.current?.click()}
+                                    onDragOver={handleDragOver}
+                                    onDragLeave={handleDragLeave}
+                                    onDrop={handleDrop}
+                                >
+                                    <input type="file" ref={fileInputRef} onChange={handleFileSelect} accept="image/*" className="hidden" />
+                                    {screenshot ? (
+                                        <>
+                                            <Image src={screenshot} alt="Screenshot preview" width={80} height={80} className="mx-auto rounded-md" />
+                                            <p className='text-xs text-muted-foreground mt-2'>Click to change screenshot</p>
+                                            <Button variant="ghost" size="icon" className="absolute top-1 right-1 h-6 w-6" onClick={(e) => { e.stopPropagation(); setScreenshot(null); }}>
+                                                <X className='h-4 w-4'/>
+                                            </Button>
+                                        </>
+                                    ) : (
+                                        <div className='space-y-1'>
+                                            <Upload className="mx-auto h-8 w-8 text-muted-foreground" />
+                                            <p className="text-sm font-semibold">Upload Payment Screenshot</p>
+                                            <p className="text-xs text-muted-foreground">or drag and drop</p>
+                                        </div>
+                                    )}
+                                </div>
+                                <Button size="lg" className="w-full font-bold" onClick={handleSendPayment} disabled={isProcessing || !screenshot}>
                                     {isProcessing ? <Loader className='animate-spin mr-2'/> : <Send className="mr-2" />}
                                     {isProcessing ? 'Sending...' : 'I Have Sent The Payment'}
                                 </Button>
-                                <Button variant="outline" className="w-full" onClick={() => setSelectedPaymentMethod(null)}>Change Payment Method</Button>
+                                <Button variant="outline" className="w-full" onClick={() => { setSelectedPaymentMethod(null); setScreenshot(null); }}>Change Payment Method</Button>
                             </div>
                         ) : (
                             <div className="space-y-3 animate-in fade-in-50">
@@ -474,7 +544,7 @@ function PaymentForm() {
                                     <Button size="lg" className="font-bold bg-green-800 hover:bg-green-900" onClick={() => handlePaymentMethodSelect('Maya')} disabled={!duration}>
                                         Maya
                                     </Button>
-                                    <Button size="lg" className="font-bold bg-red-600 hover:bg-red-700" onClick={() => handlePaymentMethodSelect('QR Code')} disabled={!duration}>
+                                    <Button size="lg" className="font-bold bg-black hover:bg-gray-800" onClick={() => handlePaymentMethodSelect('QR Code')} disabled={!duration}>
                                         QR Code
                                     </Button>
                                 </div>

@@ -318,7 +318,7 @@ export function AdminPcTable({ pcs, setPcs, addAuditLog, onRefresh, isRefreshing
         badgeClass = 'bg-green-800 hover:bg-green-800';
         break;
       case 'QR Code':
-        badgeClass = 'bg-red-600 hover:bg-red-600';
+        badgeClass = 'bg-black hover:bg-black';
         break;
       default:
         badgeClass = 'bg-gray-500 hover:bg-gray-500';

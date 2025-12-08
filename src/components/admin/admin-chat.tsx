@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
-import { MessageSquare, Send, X, User, Paperclip, Image as ImageIcon } from 'lucide-react';
+import { MessageSquare, Send, X, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback } from '../ui/avatar';
 import { format, formatDistanceToNow } from 'date-fns';
@@ -19,10 +19,7 @@ import Image from 'next/image';
 function AdminChatUI() {
   const { conversations, activeConversation, setActiveConversation, sendMessage, unreadCounts } = useChat();
   const [newMessage, setNewMessage] = useState('');
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const activeMessages = activeConversation ? conversations[activeConversation] || [] : [];
   const hasUnread = Object.values(unreadCounts).some(count => count > 0);
@@ -42,63 +39,17 @@ function AdminChatUI() {
   }, [activeMessages]);
 
   const handleSendMessage = () => {
-    if (imagePreview) {
-      sendMessage(imagePreview, 'image');
-      setImagePreview(null);
-    } else if (newMessage.trim() && activeConversation) {
+    if (newMessage.trim() && activeConversation) {
       sendMessage(newMessage);
       setNewMessage('');
     }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && !imagePreview) {
+    if (e.key === 'Enter') {
       handleSendMessage();
     }
   };
-
-  const processFile = (file: File) => {
-    if (file && file.type.startsWith('image/')) {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-            setImagePreview(reader.result as string);
-            setNewMessage(''); // Clear text when image is selected
-        };
-        reader.readAsDataURL(file);
-    }
-  }
-
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      processFile(file);
-    }
-    // Reset file input value to allow selecting the same file again
-    if(fileInputRef.current) fileInputRef.current.value = '';
-  };
-
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-  };
-
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file) {
-        processFile(file);
-    }
-  };
-
 
   return (
     <Popover>
@@ -117,9 +68,6 @@ function AdminChatUI() {
         className="w-[400px] h-[500px] p-0 flex"
         side="top"
         align="end"
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
       >
         <div className="w-1/3 border-r bg-muted/50 flex flex-col">
             <div className="p-2 border-b">
@@ -151,12 +99,6 @@ function AdminChatUI() {
             </ScrollArea>
         </div>
         <div className="w-2/3 flex flex-col relative">
-            {isDragging && (
-                <div className="absolute inset-0 z-10 bg-primary/20 border-4 border-dashed border-primary flex flex-col items-center justify-center pointer-events-none rounded-r-lg">
-                    <ImageIcon className="h-12 w-12 text-primary" />
-                    <p className="text-lg font-semibold text-primary">Drop image here</p>
-                </div>
-            )}
             {activeConversation ? (
                 <>
                     <div className="p-2 border-b flex items-center justify-between">
@@ -210,38 +152,14 @@ function AdminChatUI() {
                         </div>
                     </ScrollArea>
                     <div className="p-2 border-t">
-                        {imagePreview && (
-                            <div className="relative p-2">
-                                <Image src={imagePreview} alt="Preview" width={80} height={80} className="rounded-md" />
-                                <Button
-                                    variant="destructive"
-                                    size="icon"
-                                    className="absolute top-0 right-0 h-6 w-6"
-                                    onClick={() => setImagePreview(null)}
-                                >
-                                    <X className="h-4 w-4" />
-                                </Button>
-                            </div>
-                        )}
                         <div className="flex items-center gap-2">
                             <Input
                                 value={newMessage}
                                 onChange={e => setNewMessage(e.target.value)}
                                 onKeyPress={handleKeyPress}
                                 placeholder="Type a message..."
-                                disabled={!!imagePreview}
                             />
-                            <input
-                                type="file"
-                                ref={fileInputRef}
-                                onChange={handleFileSelect}
-                                accept="image/*"
-                                className="hidden"
-                            />
-                            <Button size="icon" variant="ghost" onClick={() => fileInputRef.current?.click()} disabled={!!imagePreview}>
-                                <Paperclip className="h-4 w-4" />
-                            </Button>
-                            <Button size="icon" onClick={handleSendMessage} disabled={!newMessage.trim() && !imagePreview}>
+                            <Button size="icon" onClick={handleSendMessage} disabled={!newMessage.trim()}>
                                 <Send className="h-4 w-4" />
                             </Button>
                         </div>
