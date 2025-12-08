@@ -346,8 +346,8 @@ export function AdminPcTable({ pcs, setPcs, addAuditLog, onRefresh, isRefreshing
       case 'Maya':
         badgeClass = 'bg-green-800 hover:bg-green-800';
         break;
-      case 'QR Code':
-        badgeClass = 'bg-black hover:bg-black';
+      case 'PayPal':
+        badgeClass = 'bg-blue-800 hover:bg-blue-800';
         break;
       default:
         badgeClass = 'bg-gray-500 hover:bg-gray-500';

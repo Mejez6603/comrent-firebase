@@ -7,7 +7,7 @@ export type PCStatus =
   | 'unavailable'
   | 'time_up';
 
-export type PaymentMethod = 'GCash' | 'Maya' | 'QR Code';
+export type PaymentMethod = 'GCash' | 'Maya' | 'PayPal';
 
 export interface PC {
   id: string;

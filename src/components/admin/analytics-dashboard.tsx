@@ -1,6 +1,6 @@
 'use client';
 import { useMemo, useState } from 'react';
-import type { PC, PricingTier, PCStatus } from '@/lib/types';
+import type { PC, PricingTier, PCStatus, PaymentMethod } from '@/lib/types';
 import { Users, DollarSign, Clock, Computer, Calendar as CalendarIcon, PieChart as PieChartIcon, BarChart2, Briefcase, Coffee, TrendingUp, Tag, Percent, ArrowDown, ArrowUp, LineChart } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import {
@@ -36,10 +36,10 @@ type AnalyticsDashboardProps = {
 };
 
 
-const PIE_CHART_COLORS = {
+const PIE_CHART_COLORS: Record<PaymentMethod | PCStatus, string> = {
     'GCash': 'hsl(var(--chart-1))',
     'Maya': 'hsl(var(--chart-2))',
-    'QR Code': 'hsl(var(--chart-3))',
+    'PayPal': 'hsl(var(--chart-3))',
     
     'available': 'hsl(var(--status-online))',
     'in_use': 'hsl(var(--status-using))',

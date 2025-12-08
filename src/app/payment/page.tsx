@@ -39,10 +39,10 @@ import { ChatButton } from '@/components/chat-button';
 
 type PaymentStep = 'selection' | 'pending_approval' | 'in_session' | 'session_ended';
 
-const paymentMethodColors: Record<PaymentMethod, string> = {
-    GCash: 'bg-blue-500',
-    Maya: 'bg-green-900',
-    'QR Code': 'bg-black',
+const paymentMethodConfig: Record<PaymentMethod, { bgClass: string, qrImage: string }> = {
+    GCash: { bgClass: 'bg-blue-500', qrImage: '/qr code images/gcash.png' },
+    Maya: { bgClass: 'bg-green-900', qrImage: '/qr code images/maya.png' },
+    PayPal: { bgClass: 'bg-blue-800', qrImage: '/qr code images/paypal.png' },
 };
 
 function PaymentForm() {
@@ -498,8 +498,15 @@ function PaymentForm() {
                                     <p className='text-muted-foreground'>Scan to pay via <span className='font-bold'>{selectedPaymentMethod}</span></p>
                                     <p className="text-4xl font-bold pt-2">₱{selectedDuration?.price.toFixed(2)}</p>
                                 </div>
-                                <div className={cn("w-48 h-48 mx-auto rounded-lg shadow-inner flex items-center justify-center", paymentMethodColors[selectedPaymentMethod])}>
-                                    <p className='text-white/80 font-mono text-sm'>[QR CODE]</p>
+                                <div className={cn("w-48 h-48 mx-auto rounded-lg shadow-inner flex items-center justify-center p-2", paymentMethodConfig[selectedPaymentMethod].bgClass)}>
+                                    <Image 
+                                      src={paymentMethodConfig[selectedPaymentMethod].qrImage} 
+                                      alt={`${selectedPaymentMethod} QR Code`}
+                                      width={180}
+                                      height={180}
+                                      className="rounded-md"
+                                      priority
+                                    />
                                 </div>
                                 <div 
                                     className={cn(
@@ -544,8 +551,8 @@ function PaymentForm() {
                                     <Button size="lg" className="font-bold bg-green-800 hover:bg-green-900" onClick={() => handlePaymentMethodSelect('Maya')} disabled={!duration}>
                                         Maya
                                     </Button>
-                                    <Button size="lg" className="font-bold bg-black hover:bg-gray-800" onClick={() => handlePaymentMethodSelect('QR Code')} disabled={!duration}>
-                                        QR Code
+                                    <Button size="lg" className="font-bold bg-blue-800 hover:bg-blue-900" onClick={() => handlePaymentMethodSelect('PayPal')} disabled={!duration}>
+                                        PayPal
                                     </Button>
                                 </div>
                             </div>

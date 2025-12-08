@@ -38,7 +38,7 @@ pcs[7].status = 'in_use';
 pcs[7].user = 'user_b';
 pcs[7].session_start = new Date(Date.now() - 15 * 60 * 1000).toISOString();
 pcs[7].session_duration = 30;
-pcs[7].paymentMethod = 'QR Code';
+pcs[7].paymentMethod = 'PayPal';
 
 
 pcs[10].status = 'unavailable';
@@ -57,7 +57,7 @@ function updateStatuses() {
           user: `user_${Math.random().toString(36).substring(7)}`,
           session_start: new Date().toISOString(),
           session_duration: [30, 60, 120][Math.floor(Math.random() * 3)],
-          paymentMethod: ['GCash', 'Maya', 'QR Code'][Math.floor(Math.random() * 3)] as PaymentMethod
+          paymentMethod: ['GCash', 'Maya', 'PayPal'][Math.floor(Math.random() * 3)] as PaymentMethod
       };
     }
 

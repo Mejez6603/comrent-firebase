@@ -3,7 +3,7 @@ import type { PC, PaymentMethod, PricingTier } from '@/lib/types';
 import { subMonths, eachDayOfInterval, setHours, setMinutes, setSeconds, formatISO } from 'date-fns';
 
 const pcNames = Array.from({ length: 12 }, (_, i) => `PC-${String(i + 1).padStart(2, '0')}`);
-const paymentMethods: PaymentMethod[] = ['GCash', 'Maya', 'QR Code'];
+const paymentMethods: PaymentMethod[] = ['GCash', 'Maya', 'PayPal'];
 const pricingTiers: Omit<PricingTier, 'label'>[] = [
     { value: '30', price: 30 },
     { value: '60', price: 50 },
