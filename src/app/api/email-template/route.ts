@@ -12,6 +12,8 @@ Here are the details of your recent session:
 - Duration: {{duration}}
 - Total Amount: {{amount}}
 
+The payment screenshot you provided is attached to this email for your records.
+
 We hope to see you again soon!
 
 Best,

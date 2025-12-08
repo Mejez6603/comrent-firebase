@@ -24,7 +24,8 @@ const SendGeneratedEmailInputSchema = z.object({
   customerEmail: z.string().describe("The recipient's email address."),
   emailSubject: z.string().describe('The subject line of the email.'),
   emailBody: z.string().describe('The body of the email.'),
-  fromAddress: z.string().describe("The sender's email address (e.g., 'Your Company <no-reply@yourdomain.com>')")
+  fromAddress: z.string().describe("The sender's email address (e.g., 'Your Company <no-reply@yourdomain.com>')"),
+  paymentScreenshotUrl: z.string().optional().describe('The data URI of the payment screenshot to attach.'),
 });
 export type SendGeneratedEmailInput = z.infer<typeof SendGeneratedEmailInputSchema>;
 
@@ -44,12 +45,24 @@ const sendGeneratedEmailFlow = ai.defineFlow(
       }
       const resend = new Resend(process.env.RESEND_API_KEY);
 
+      const attachments = [];
+      if (input.paymentScreenshotUrl) {
+        // Resend expects a Buffer, so we need to convert the base64 data URI
+        const base64Data = input.paymentScreenshotUrl.split(',')[1];
+        const buffer = Buffer.from(base64Data, 'base64');
+        attachments.push({
+          filename: 'payment-screenshot.png',
+          content: buffer,
+        });
+      }
+
       console.log(`INFO: Sending email to ${input.customerEmail}`);
       const { data, error } = await resend.emails.send({
         from: input.fromAddress,
         to: [input.customerEmail],
         subject: input.emailSubject,
-        text: input.emailBody, // Use text instead of html for simplicity
+        text: input.emailBody,
+        attachments: attachments,
       });
 
       if (error) {
