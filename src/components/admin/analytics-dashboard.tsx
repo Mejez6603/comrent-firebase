@@ -124,6 +124,23 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
     }, [filteredSessions, pricingTiers]);
 
 
+    const dailyPerformance = useMemo(() => {
+        const performance = filteredSessions.reduce((acc, session) => {
+            if (!session.session_start) return acc;
+            const day = format(new Date(session.session_start), 'MMM dd');
+            const durationInfo = pricingTiers.find(d => d.value === String(session.session_duration));
+            const price = durationInfo?.price || 0;
+            if (!acc[day]) {
+                acc[day] = { day, revenue: 0, sessions: 0, date: new Date(session.session_start) };
+            }
+            acc[day].revenue += price;
+            acc[day].sessions += 1;
+            return acc;
+        }, {} as Record<string, { day: string, revenue: number, sessions: number, date: Date }>);
+        
+        return Object.values(performance).sort((a,b) => a.date.getTime() - b.date.getTime());
+    }, [filteredSessions, pricingTiers]);
+
     const monthlyPerformance = useMemo(() => {
         const performance = filteredSessions.reduce((acc, session) => {
             if (!session.session_start) return acc;
@@ -299,6 +316,27 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
                     </CardContent>
                 </Card>
             </div>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle>Daily Performance</CardTitle>
+                    <CardDescription>Revenue and sessions for each day in the selected period.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <ChartContainer config={chartConfig} className="h-[250px] w-full">
+                        <RechartsBarChart data={dailyPerformance} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
+                            <CartesianGrid vertical={false} />
+                            <XAxis dataKey="day" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                            <YAxis yAxisId="left" stroke="hsl(var(--chart-1))" fontSize={12} tickFormatter={(val) => `₱${val}`} />
+                            <YAxis yAxisId="right" orientation="right" stroke="hsl(var(--chart-2))" fontSize={12} />
+                            <ChartTooltip content={<ChartTooltipContent />} />
+                            <Legend />
+                            <Bar yAxisId="left" dataKey="revenue" fill="var(--color-revenue)" radius={[4, 4, 0, 0]} name="Revenue (₱)"/>
+                            <Bar yAxisId="right" dataKey="sessions" fill="var(--color-sessions)" radius={[4, 4, 0, 0]} name="Sessions"/>
+                        </RechartsBarChart>
+                    </ChartContainer>
+                </CardContent>
+            </Card>
 
             <Card>
                 <CardHeader>
