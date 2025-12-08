@@ -10,7 +10,7 @@ interface ChatContextType {
   conversations: Record<string, Message[]>;
   activeConversation: string | null;
   setActiveConversation: (pcName: string | null) => void;
-  sendMessage: (text: string) => void;
+  sendMessage: (textOrImageUrl: string, type?: 'text' | 'image') => void;
   unreadCounts: Record<string, number>;
   pc: PC | null;
   setPc: Dispatch<SetStateAction<PC | null>>;
@@ -130,15 +130,21 @@ export function ChatProvider({ children, role = 'user' }: ChatProviderProps) {
     return () => clearInterval(intervalId);
   }, [fetchMessagesAndStatus]);
 
-  const sendMessage = async (text: string) => {
+  const sendMessage = async (content: string, type: 'text' | 'image' = 'text') => {
     const targetPcName = activeConversation;
     if (!targetPcName) return;
+
+    const body = {
+        pcName: targetPcName,
+        sender: role,
+        ...(type === 'text' ? { text: content } : { imageUrl: content }),
+    };
 
     try {
       await fetch('/api/messages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pcName: targetPcName, sender: role, text }),
+        body: JSON.stringify(body),
       });
       fetchMessagesAndStatus(); // Re-fetch to get the latest messages
     } catch (error) {

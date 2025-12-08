@@ -15,7 +15,8 @@ import { NextResponse } from 'next/server';
 export interface Message {
   id: string;
   sender: 'user' | 'admin';
-  text: string;
+  text?: string; // Text is now optional
+  imageUrl?: string; // Image URL is now an option
   timestamp: string;
   pcName: string; 
   isRead: boolean;
@@ -40,9 +41,9 @@ export async function GET(request: Request) {
 // POST a new message
 export async function POST(request: Request) {
   try {
-    const { pcName, sender, text } = await request.json();
+    const { pcName, sender, text, imageUrl } = await request.json();
 
-    if (!pcName || !sender || !text) {
+    if (!pcName || !sender || (!text && !imageUrl)) {
       return NextResponse.json({ message: 'Missing required fields' }, { status: 400 });
     }
 
@@ -51,6 +52,7 @@ export async function POST(request: Request) {
       pcName,
       sender,
       text,
+      imageUrl,
       timestamp: new Date().toISOString(),
       isRead: false,
     };

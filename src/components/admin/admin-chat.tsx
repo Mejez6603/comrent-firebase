@@ -9,16 +9,19 @@ import {
 } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
-import { MessageSquare, Send, X, User } from 'lucide-react';
+import { MessageSquare, Send, X, User, Paperclip, Image as ImageIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback } from '../ui/avatar';
 import { format, formatDistanceToNow } from 'date-fns';
 import { useChatSounds } from '@/hooks/use-chat-sounds';
+import Image from 'next/image';
 
 function AdminChatUI() {
   const { conversations, activeConversation, setActiveConversation, sendMessage, unreadCounts } = useChat();
   const [newMessage, setNewMessage] = useState('');
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const activeMessages = activeConversation ? conversations[activeConversation] || [] : [];
   const hasUnread = Object.values(unreadCounts).some(count => count > 0);
@@ -38,16 +41,33 @@ function AdminChatUI() {
   }, [activeMessages]);
 
   const handleSendMessage = () => {
-    if (newMessage.trim() && activeConversation) {
+    if (imagePreview) {
+      sendMessage(imagePreview, 'image');
+      setImagePreview(null);
+    } else if (newMessage.trim() && activeConversation) {
       sendMessage(newMessage);
       setNewMessage('');
     }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' && !imagePreview) {
       handleSendMessage();
     }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+        setNewMessage(''); // Clear text when image is selected
+      };
+      reader.readAsDataURL(file);
+    }
+    // Reset file input value to allow selecting the same file again
+    if(fileInputRef.current) fileInputRef.current.value = '';
   };
 
   return (
@@ -121,13 +141,23 @@ function AdminChatUI() {
                                 )}
                                 <div
                                     className={cn(
-                                    "max-w-[75%] rounded-lg p-2 px-3 text-sm",
+                                    "max-w-[75%] rounded-lg p-2 text-sm",
                                     msg.sender === 'admin'
                                         ? 'bg-primary text-primary-foreground'
-                                        : 'bg-muted'
+                                        : 'bg-muted',
+                                    msg.text ? 'px-3' : 'p-1' // Less padding for images
                                     )}
                                 >
-                                    <p>{msg.text}</p>
+                                    {msg.text && <p>{msg.text}</p>}
+                                    {msg.imageUrl && (
+                                        <Image
+                                            src={msg.imageUrl}
+                                            alt="Chat image"
+                                            width={200}
+                                            height={200}
+                                            className="rounded-md object-cover"
+                                        />
+                                    )}
                                     <p className={cn("text-xs mt-1", msg.sender === 'admin' ? 'text-primary-foreground/70 text-right' : 'text-muted-foreground/70')}>
                                         {format(new Date(msg.timestamp), 'p')} • {formatDistanceToNow(new Date(msg.timestamp), { addSuffix: true })}
                                     </p>
@@ -136,16 +166,42 @@ function AdminChatUI() {
                         ))}
                         </div>
                     </ScrollArea>
-                    <div className="p-2 border-t flex items-center gap-2">
-                        <Input
-                        value={newMessage}
-                        onChange={e => setNewMessage(e.target.value)}
-                        onKeyPress={handleKeyPress}
-                        placeholder="Type a message..."
-                        />
-                        <Button size="icon" onClick={handleSendMessage}>
-                            <Send className="h-4 w-4" />
-                        </Button>
+                    <div className="p-2 border-t">
+                        {imagePreview && (
+                            <div className="relative p-2">
+                                <Image src={imagePreview} alt="Preview" width={80} height={80} className="rounded-md" />
+                                <Button
+                                    variant="destructive"
+                                    size="icon"
+                                    className="absolute top-0 right-0 h-6 w-6"
+                                    onClick={() => setImagePreview(null)}
+                                >
+                                    <X className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        )}
+                        <div className="flex items-center gap-2">
+                            <Input
+                                value={newMessage}
+                                onChange={e => setNewMessage(e.target.value)}
+                                onKeyPress={handleKeyPress}
+                                placeholder="Type a message..."
+                                disabled={!!imagePreview}
+                            />
+                            <input
+                                type="file"
+                                ref={fileInputRef}
+                                onChange={handleFileSelect}
+                                accept="image/*"
+                                className="hidden"
+                            />
+                            <Button size="icon" variant="ghost" onClick={() => fileInputRef.current?.click()} disabled={!!imagePreview}>
+                                <Paperclip className="h-4 w-4" />
+                            </Button>
+                            <Button size="icon" onClick={handleSendMessage} disabled={!newMessage.trim() && !imagePreview}>
+                                <Send className="h-4 w-4" />
+                            </Button>
+                        </div>
                     </div>
                 </>
             ) : (
