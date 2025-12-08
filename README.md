@@ -54,6 +54,28 @@ Through this journey, we not only built a functional application but also naviga
 -   **Integrated Chat**: A built-in chat system allows users to request help and admins to respond from the dashboard.
 -   **Notification System**: Admins receive real-time notifications with sound alerts for important events like new payment approvals or finished sessions.
 
+## How the System Works
+
+### User Flow
+1.  **Select PC**: From the main grid, the user clicks an **"Available"** PC.
+2.  **Start Session**: A dialog appears. The user confirms they want to start a session, which takes them to the payment page. The PC's status changes to **"Pending Payment"**.
+3.  **Choose Duration & Payment**: The user selects their desired rental time (e.g., 1 hour) and a payment method (e.g., GCash).
+4.  **Pay & Upload Proof**: The user scans the displayed QR code with their mobile app to pay. They then upload a screenshot of the successful transaction.
+5.  **Notify Admin**: After uploading, the user clicks "I Have Sent The Payment". The PC's status changes to **"Pending Approval"**, and a notification is sent to the admin.
+6.  **Session Start**: Once the admin approves the payment, the user's screen automatically updates, showing a live countdown timer. The PC's status is now **"In Use"**.
+7.  **Session End**: When the timer runs out, the user is notified with an alarm, and the PC's status changes to **"Time's Up"**.
+
+### Admin Flow
+1.  **Monitor Dashboard**: The admin views a detailed table of all PCs and their live statuses.
+2.  **Receive Notification**: A new notification with a sound alert appears for a PC that is **"Pending Approval"**.
+3.  **Verify Payment**: The admin clicks the "Proof" icon in the table to view the user's payment screenshot in a modal window.
+4.  **Approve Session**: The admin changes the PC's status from "Pending Approval" to **"In Use"**. This action automatically starts the session timer on the user's end.
+5.  **Manage & Assist**:
+    - The admin can manually change the status of any PC (e.g., set to "Maintenance").
+    - They can communicate with users via the built-in **Chat** system.
+    - They can send a customized **Email Invoice** to the user with the payment proof attached.
+6.  **Reset PC**: Once a user's session is over ("Time's Up"), the admin can reset the PC by changing its status to **"Available"**, making it ready for the next customer.
+
 ## Changelog (Recent Additions)
 
 - **v1.5 (Analytics Overhaul)**
