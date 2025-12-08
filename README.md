@@ -26,42 +26,60 @@ The project began with a simple but powerful idea: create a real-time management
 ### 2. Core Development & Iteration
 With the plan in place, we built the application from the ground up using a modern tech stack. The initial development focused on creating the backend APIs to manage PC statuses, pricing, and user sessions, and building the frontend components with React, Next.js, and ShadCN UI for a clean, professional look. We established the two primary interfaces: the visual grid for users and the data-rich table for admins, along with a role-switcher to move between them.
 
-### 3. The GitHub Authentication Challenge
-A significant real-world challenge emerged when it came time to manage the code on GitHub. The initial development environment was authenticated with one GitHub account, but for deployment and ownership purposes, the code needed to be pushed to a repository under a different account.
+### 3. Feature Integration
+As the core was solidified, we integrated key services to enhance functionality:
+- **Genkit & Resend:** We implemented a Genkit flow to power our email system. This flow connects to the Resend API, allowing admins to generate and send customized invoices directly from the dashboard, complete with attached payment screenshots. This provided a seamless, professional communication channel with customers.
+- **QR Code Payments:** To enhance the realism of the payment process, we integrated QR code images for GCash, Maya, and PayPal, making the user-facing payment screen more intuitive and visually engaging.
 
-This led to a series of classic Git authentication errors:
-- **Permission Denied:** Our first attempts to `git push` were rejected because the cached credentials of the old account did not have permission to access the new repository.
-- **Password Authentication Deprecation:** We then encountered GitHub's modern security policy. GitHub no longer accepts account passwords for Git operations. This required us to learn about and generate a **Personal Access Token (PAT)**.
-
-We systematically worked through these issues by:
-1.  Changing the remote URL using `git remote set-url origin`.
-2.  Unsetting the Git credential helper to force a new login prompt.
-3.  Generating a new PAT from the new GitHub account with the correct `repo` scopes.
-4.  Using the PAT in place of a password to successfully authenticate and push the code.
-5.  Finally, we collaborated the two accounts and switched the remote URL back to the original repository, solidifying our understanding of remote management in Git.
-
-### 4. Integration and Deployment with Railway
-With the code successfully on GitHub, the next step was to bring the application to life on the web. We chose **Railway** as our hosting platform. The process involved:
-1.  Connecting the new GitHub repository to a Railway project.
-2.  Configuring the `package.json` `start` script to `next start -p $PORT`. This is a crucial step that allows Railway to dynamically assign the correct port for the application to run on.
-3.  Pushing the updated `package.json` to GitHub, which automatically triggered a new build and deployment on Railway.
-4.  Generating a public domain within the Railway dashboard, making the application accessible to the world.
+### 4. Deployment to Hostinger
+With the application ready for the world, we chose **Hostinger** as our deployment platform. The process involved:
+1.  Pushing the finalized code to a GitHub repository.
+2.  Connecting the repository to a new project on Hostinger.
+3.  Configuring the environment, including setting up the necessary environment variables (`RESEND_API_KEY`, `GEMINI_API_KEY`) and build commands.
+4.  Adjusting the `package.json` `start` script to `next start -p $PORT`, a crucial step that allows the hosting provider to dynamically assign the correct port.
+5.  Triggering a deployment, which Hostinger then automatically built and launched, making the application live and accessible on the web.
 
 Through this journey, we not only built a functional application but also navigated and solved complex, real-world development and deployment challenges.
-
 
 ## Features
 
 -   **Real-Time PC Status Grid**: Color-coded cards display the live status of each PC (Available, In Use, Pending Payment, Maintenance, etc.).
--   **User Session Flow**: Users can click an available PC to start the rental process, select session duration, and simulate a payment.
+-   **User Session Flow**: Users can click an available PC to start the rental process, select session duration, and simulate a payment using QR codes.
 -   **Live Session Timer**: Users can see their remaining time with a live countdown timer and receive alerts as their session nears its end.
 -   **Admin Dashboard**: A centralized view for admins to monitor all PCs, manually change statuses, and manage user sessions.
 -   **Role-Based Views**: Easily switch between the "User" view and the "Admin" view to experience both sides of the application.
--   **Analytics & Reporting**: The admin panel includes an analytics dashboard to track total revenue, peak usage hours, payment method distribution, and more.
+-   **Analytics & Reporting**: The admin panel includes a detailed analytics dashboard to track revenue, sessions, peak usage hours, payment methods, and PC popularity.
 -   **Dynamic Pricing Management**: Admins can add, edit, or delete pricing tiers for different session durations.
 -   **Email Invoice Template Editor**: Admins can edit a master template for email invoices that are sent to customers.
 -   **Integrated Chat**: A built-in chat system allows users to request help and admins to respond from the dashboard.
 -   **Notification System**: Admins receive real-time notifications with sound alerts for important events like new payment approvals or finished sessions.
+
+## Changelog (Recent Additions)
+
+- **v1.5 (Analytics Overhaul)**
+  - Added comprehensive analytics dashboard with multiple charts.
+  - Implemented daily and monthly performance tracking (Revenue & Sessions).
+  - Added charts for Peak Hours, Payment Method Distribution, and Live PC Status.
+  - Included a "Session Duration per PC" line graph to visualize popularity trends.
+  - Added key stat cards: Total Revenue, Total Sessions, Avg. Revenue/Session, Avg. Session Duration, and Active PCs.
+
+- **v1.4 (Payment & UI Enhancements)**
+  - Integrated real QR code images for GCash, Maya, and PayPal payment methods.
+  - Added a "How-to" guide popover on the payment page to assist users.
+  - Fixed a bug where a PC's status didn't update to "Pending Payment" upon selection.
+
+- **v1.3 (Core Admin & User Features)**
+  - Implemented a master email invoice template editor for admins.
+  - Developed a real-time chat system for user-admin communication.
+  - Created a notification panel with sound alerts for admins.
+  - Added a complete audit log to track all admin actions.
+  - Implemented dynamic pricing management in the admin panel.
+
+- **v1.0 (Initial Release)**
+  - Core application structure with Next.js and ShadCN.
+  - Real-time PC status grid for users.
+  - Basic admin dashboard with a table view.
+  - User session flow from PC selection to simulated payment.
 
 ## Technologies Used
 
@@ -73,14 +91,7 @@ Through this journey, we not only built a functional application but also naviga
 -   **State Management**: React Hooks (useState, useEffect, useContext)
 -   **AI Integration**: Genkit (for email generation flows)
 -   **Email Sending**: Resend
--   **Deployment**: Railway
-
-## System Requirements
-
--   **Node.js**: v18 or newer recommended.
--   **Package Manager**: npm, yarn, or pnpm.
--   **Web Browser**: A modern web browser like Chrome, Firefox, Safari, or Edge.
-
+-   **Deployment**: Hostinger
 
 ## Getting Started
 
@@ -96,7 +107,7 @@ To get a local copy up and running, follow these simple steps.
 1.  **Clone the repository:**
     ```bash
     git clone <your-repository-url>
-    cd comrent-firebase
+    cd comrent
     ```
 
 2.  **Install dependencies:**
@@ -120,64 +131,24 @@ To get a local copy up and running, follow these simple steps.
 
 ## Deployment
 
-This application is configured for deployment on platforms like [Railway](https://railway.app/) or [Vercel](https://vercel.com/).
+This application is configured for deployment on platforms like [Hostinger](https://www.hostinger.com/), [Railway](https://railway.app/), or [Vercel](https://vercel.com/).
 
 The `package.json` `start` script is set to `next start -p $PORT`, which allows the hosting provider to dynamically assign the port for the application to run on. Simply connect your GitHub repository to your hosting provider of choice, and it should build and deploy automatically.
 
-## Usage Guide
-
-1.  **User View**:
-    -   The initial page shows the grid of all PCs.
-    -   Click on a green "Available" PC to start the rental process.
-    -   Follow the on-screen instructions to select a duration and make a payment.
-    -   Once approved by an admin, your session timer will begin.
-    -   Use the chat bubble to contact an admin for assistance.
-
-2.  **Admin View**:
-    -   Click the "Switch to Admin" button on the user view.
-    -   Use the sidebar to navigate between `Dashboard`, `Analytics`, `Pricing`, `Invoice Layout`, and `Audit Log`.
-    -   On the `Dashboard`, you can approve pending sessions, change PC statuses, and view user details.
-    -   Click a user's email in the table to generate and send an invoice.
-
-## Project Structure
-
-The project is organized following Next.js App Router conventions.
-
-```
-/src
-├── app/                  # Main application routes
-│   ├── api/              # API endpoints for backend logic
-│   ├── layout.tsx        # Root layout
-│   └── page.tsx          # Main entry point (user/admin switcher)
-├── components/           # Reusable React components
-│   ├── admin/            # Components specific to the admin dashboard
-│   ├── ui/               # ShadCN UI components
-│   └── *.tsx             # General application components
-├── hooks/                # Custom React hooks
-├── lib/                  # Utility functions, types, and constants
-└── ai/                   # Genkit AI flows
-    ├── flows/
-    └── genkit.ts
-```
-
-## Troubleshooting
-
--   **Error "pcName is required"**: This can happen if you navigate directly to the `/payment` page without selecting a PC first. Always start from the main page.
--   **API Errors**: Ensure your `.env` file is correctly set up with the required API keys.
--   **Stale Data**: If the admin dashboard seems out of sync, use the "Refresh" button.
-
 ## Future Enhancements
 
--   **Full Responsive Design**: Further enhance the UI to be perfectly responsive and presentable on all mobile device sizes, ensuring users do not need "desktop mode".
--   **User Accounts**: Implement a full authentication system where users can create accounts, view their session history, and save payment methods.
--   **Real Payment Integration**: Replace the simulated payment flow with a real payment gateway like Stripe or PayPal.
--   **Advanced PC Management**: Add features for admins to remotely lock, restart, or shut down PCs.
--   **Booking/Reservation System**: Allow users to reserve a PC for a future time slot.
+-   **Full User Authentication**: Implement a complete user account system where users can register, log in, view their session history, and save payment methods.
+-   **PC Reservation System**: Allow users to book or reserve a specific PC for a future time slot.
+-   **Real Payment Gateway**: Replace the simulated QR code flow with a real payment gateway integration like Stripe for automated payment confirmation.
+-   **Advanced PC Management**: Add features for admins to remotely lock, restart, or shut down PCs directly from the dashboard.
+-   **Data Persistence**: Replace the in-memory data stores with a proper database (e.g., Firebase Firestore, Supabase, or a traditional SQL database) to persist all data.
 
 ## Acknowledgements
 
 -   This project was bootstrapped and developed with the assistance of Firebase Studio.
 -   UI components are from the excellent [ShadCN UI](https://ui.shadcn.com/) library.
+-   Charting capabilities provided by [Recharts](https://recharts.org/).
+-   Email delivery is powered by [Resend](https://resend.com/).
 -   Icons provided by [Lucide](https://lucide.dev/).
 
 ## License
