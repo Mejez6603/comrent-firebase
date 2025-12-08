@@ -562,6 +562,16 @@ export function AdminPcTable({ pcs, setPcs, addAuditLog, onRefresh, isRefreshing
                         className="col-span-3 min-h-[250px]"
                     />
                 </div>
+                <div className="grid grid-cols-4 items-start gap-4">
+                    <Label className="text-right pt-2">Screenshot</Label>
+                    <div className="col-span-3">
+                        {invoicePc?.paymentScreenshotUrl ? (
+                            <Image src={invoicePc.paymentScreenshotUrl} alt="Payment Screenshot" width={200} height={200} className="rounded-md border" />
+                        ) : (
+                            <p className="text-sm text-muted-foreground pt-2">No screenshot provided.</p>
+                        )}
+                    </div>
+                </div>
             </div>
           )}
           <DialogFooter>
