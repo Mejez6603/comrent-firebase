@@ -5,7 +5,7 @@
 import { Suspense, useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import Image from 'next/image';
+import Image, { type StaticImageData } from 'next/image';
 import {
   Card,
   CardContent,
@@ -36,13 +36,16 @@ import { useAlarm } from '@/hooks/use-alarm';
 import { SessionEndedDialog } from '@/components/session-ended-dialog';
 import { ChatProvider, useChat } from '@/hooks/use-chat';
 import { ChatButton } from '@/components/chat-button';
+import gcashQr from '@/qr code images/gcash.png';
+import mayaQr from '@/qr code images/maya.png';
+import paypalQr from '@/qr code images/paypal.png';
 
 type PaymentStep = 'selection' | 'pending_approval' | 'in_session' | 'session_ended';
 
-const paymentMethodConfig: Record<PaymentMethod, { bgClass: string, qrImage: string }> = {
-    GCash: { bgClass: 'bg-blue-500', qrImage: '/qr code images/gcash.png' },
-    Maya: { bgClass: 'bg-green-900', qrImage: '/qr code images/maya.png' },
-    PayPal: { bgClass: 'bg-blue-800', qrImage: '/qr code images/paypal.png' },
+const paymentMethodConfig: Record<PaymentMethod, { bgClass: string, qrImage: StaticImageData }> = {
+    GCash: { bgClass: 'bg-blue-500', qrImage: gcashQr },
+    Maya: { bgClass: 'bg-green-900', qrImage: mayaQr },
+    PayPal: { bgClass: 'bg-blue-800', qrImage: paypalQr },
 };
 
 function PaymentForm() {
