@@ -1,7 +1,7 @@
 'use client';
 import { useMemo, useState, useEffect } from 'react';
 import type { PC, PricingTier } from '@/lib/types';
-import { Users, DollarSign, Clock, Computer, Calendar as CalendarIcon, ArrowDown, ArrowUp } from 'lucide-react';
+import { Users, DollarSign, Clock, Computer, Calendar as CalendarIcon } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import {
   ChartContainer,
@@ -183,7 +183,7 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
                 <CardDescription>Revenue and sessions for each month in the selected period.</CardDescription>
             </CardHeader>
             <CardContent>
-                <ChartContainer config={chartConfig} className="min-h-[300px] w-full">
+                <ChartContainer config={chartConfig} className="h-[300px] w-full">
                     <RechartsBarChart data={mainStats.monthlyPerformanceData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
                         <CartesianGrid vertical={false} />
                         <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={12} />
