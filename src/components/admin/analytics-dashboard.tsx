@@ -1,7 +1,7 @@
 'use client';
 import { useMemo, useState } from 'react';
 import type { PC, PricingTier, PCStatus } from '@/lib/types';
-import { Users, DollarSign, Clock, Computer, Calendar as CalendarIcon, PieChart as PieChartIcon, BarChart2, Briefcase, Coffee } from 'lucide-react';
+import { Users, DollarSign, Clock, Computer, Calendar as CalendarIcon, PieChart as PieChartIcon, BarChart2, Briefcase, Coffee, TrendingUp, Tag, Percent } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import {
   ChartContainer,
@@ -75,19 +75,17 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
   }, [historicalSessions, pcs]);
 
 
-  const { filteredSessions, fromDate, toDate } = useMemo(() => {
-    if (!date?.from) return { filteredSessions: [], fromDate: new Date(), toDate: new Date() };
+  const filteredSessions = useMemo(() => {
+    if (!date?.from) return [];
     
     const from = startOfDay(date.from);
     const to = date.to ? startOfDay(addDays(date.to, 1)) : startOfDay(addDays(new Date(), 1));
 
-    const sessions = allSessions.filter(pc => {
+    return allSessions.filter(pc => {
         if (!pc.session_start) return false;
         const sessionDate = new Date(pc.session_start);
         return sessionDate >= from && sessionDate < to;
     });
-
-    return { filteredSessions: sessions, fromDate: from, toDate: to };
   }, [allSessions, date]);
 
 
@@ -99,8 +97,9 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
     
     const totalSessions = filteredSessions.length;
     const averageSessionMinutes = totalSessions > 0 ? filteredSessions.reduce((acc, pc) => acc + (pc.session_duration || 0), 0) / totalSessions : 0;
+    const averageRevenuePerSession = totalSessions > 0 ? totalRevenue / totalSessions : 0;
     
-    return { totalRevenue, totalSessions, averageSessionMinutes };
+    return { totalRevenue, totalSessions, averageSessionMinutes, averageRevenuePerSession };
   }, [filteredSessions, pricingTiers]);
 
 
@@ -146,6 +145,17 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
         }
         return acc;
     }, { weekday: 0, weekend: 0});
+
+    const pcPopularity = filteredSessions.reduce((acc, session) => {
+        acc[session.name] = (acc[session.name] || 0) + 1;
+        return acc;
+    }, {} as Record<string, number>);
+
+    const durationPopularity = filteredSessions.reduce((acc, session) => {
+        const durationLabel = pricingTiers.find(p => p.value === String(session.session_duration))?.label || `${session.session_duration} mins`;
+        acc[durationLabel] = (acc[durationLabel] || 0) + 1;
+        return acc;
+    }, {} as Record<string, number>);
     
     const peakHoursData = Array.from({ length: 24 }, (_, i) => ({
         hour: `${i.toString().padStart(2, '0')}:00`,
@@ -153,9 +163,11 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
     }));
 
     const paymentDistributionData = Object.entries(paymentDistribution).map(([name, value]) => ({ name, value }));
+    const pcPopularityData = Object.entries(pcPopularity).map(([name, sessions]) => ({ name, sessions })).sort((a,b) => b.sessions - a.sessions);
+    const durationPopularityData = Object.entries(durationPopularity).map(([name, value]) => ({ name, value }));
 
-    return { peakHoursData, paymentDistributionData, dayType };
-  }, [filteredSessions]);
+    return { peakHoursData, paymentDistributionData, dayType, pcPopularityData, durationPopularityData };
+  }, [filteredSessions, pricingTiers]);
 
 
   const liveStatusDistribution = useMemo(() => {
@@ -216,7 +228,7 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
             </div>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
             <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
@@ -227,17 +239,7 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
                 <p className="text-xs text-muted-foreground">from selected period</p>
             </CardContent>
             </Card>
-            <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Active PCs</CardTitle>
-                <Computer className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-                <div className="text-2xl font-bold">{activePcsCount}</div>
-                <p className="text-xs text-muted-foreground">out of {pcs.length} total PCs</p>
-            </CardContent>
-            </Card>
-            <Card>
+             <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Total Sessions</CardTitle>
                 <Users className="h-4 w-4 text-muted-foreground" />
@@ -249,12 +251,32 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
             </Card>
             <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Avg. Revenue / Session</CardTitle>
+                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+                <div className="text-2xl font-bold">₱{mainStats.averageRevenuePerSession.toFixed(2)}</div>
+                <p className="text-xs text-muted-foreground">from selected period</p>
+            </CardContent>
+            </Card>
+            <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Avg. Session Duration</CardTitle>
                 <Clock className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
                 <div className="text-2xl font-bold">{mainStats.averageSessionMinutes.toFixed(0)} min</div>
                 <p className="text-xs text-muted-foreground">from selected period</p>
+            </CardContent>
+            </Card>
+             <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Active PCs</CardTitle>
+                <Computer className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+                <div className="text-2xl font-bold">{activePcsCount}</div>
+                <p className="text-xs text-muted-foreground">out of {pcs.length} total PCs</p>
             </CardContent>
             </Card>
         </div>
@@ -358,8 +380,47 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
             </Card>
         </div>
 
+        <div className="grid gap-4 md:grid-cols-2">
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center"><Computer className="mr-2 h-5 w-5" />PC Popularity</CardTitle>
+                    <CardDescription>Usage count for each PC in the selected period.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <ChartContainer config={{ sessions: { label: 'Sessions', color: 'hsl(var(--chart-2))'}}} className="h-[250px] w-full">
+                        <RechartsBarChart data={detailedAnalytics.pcPopularityData} layout="vertical" margin={{ top: 5, right: 5, left: -10, bottom: 5 }}>
+                            <CartesianGrid horizontal={false} />
+                            <YAxis dataKey="name" type="category" stroke="hsl(var(--muted-foreground))" fontSize={10} width={50} />
+                            <XAxis dataKey="sessions" type="number" stroke="hsl(var(--muted-foreground))" fontSize={10} />
+                            <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="dot" />} />
+                            <Bar dataKey="sessions" fill="var(--color-sessions)" radius={4} />
+                        </RechartsBarChart>
+                    </ChartContainer>
+                </CardContent>
+            </Card>
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center"><Tag className="mr-2 h-5 w-5" />Duration Popularity</CardTitle>
+                    <CardDescription>Most frequently chosen rental durations.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <ChartContainer config={{}} className="h-[250px] w-full">
+                        <RechartsPieChart>
+                            <ChartTooltip content={<ChartTooltipContent hideLabel />} />
+                            <Pie data={detailedAnalytics.durationPopularityData} dataKey="value" nameKey="name" innerRadius={50} strokeWidth={2} label>
+                                {detailedAnalytics.durationPopularityData.map((entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={PIE_CHART_COLORS[index + 1 as keyof typeof PIE_CHART_COLORS] || '#8884d8'} />
+                                ))}
+                            </Pie>
+                            <Legend />
+                        </RechartsPieChart>
+                    </ChartContainer>
+                </CardContent>
+            </Card>
+        </div>
     </div>
   );
 }
 
+    
     
