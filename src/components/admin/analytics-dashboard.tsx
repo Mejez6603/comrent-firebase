@@ -48,6 +48,16 @@ const PIE_CHART_COLORS = {
     'time_up': 'hsl(var(--destructive))',
 };
 
+const DURATION_COLORS = [
+    'hsl(var(--chart-1))',
+    'hsl(var(--chart-2))',
+    'hsl(var(--chart-3))',
+    'hsl(var(--chart-4))',
+    'hsl(var(--chart-5))',
+    'hsl(225 52% 30%)',
+    'hsl(273 59% 45%)',
+]
+
 const CustomPieLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, name }: any) => {
     const RADIAN = Math.PI / 180;
     const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
@@ -146,16 +156,16 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
         return acc;
     }, { weekday: 0, weekend: 0});
 
-    const pcPopularity = filteredSessions.reduce((acc, session) => {
-        acc[session.name] = (acc[session.name] || 0) + 1;
+    const pcUsageByDuration = filteredSessions.reduce((acc, session) => {
+        const durationLabel = pricingTiers.find(p => p.value === String(session.session_duration))?.label || 'Unknown';
+        
+        if (!acc[session.name]) {
+            acc[session.name] = { name: session.name };
+        }
+        acc[session.name][durationLabel] = (acc[session.name][durationLabel] || 0) + 1;
+        
         return acc;
-    }, {} as Record<string, number>);
-
-    const durationPopularity = filteredSessions.reduce((acc, session) => {
-        const durationLabel = pricingTiers.find(p => p.value === String(session.session_duration))?.label || `${session.session_duration} mins`;
-        acc[durationLabel] = (acc[durationLabel] || 0) + 1;
-        return acc;
-    }, {} as Record<string, number>);
+    }, {} as Record<string, { name: string, [durationLabel: string]: number | string }>);
     
     const peakHoursData = Array.from({ length: 24 }, (_, i) => ({
         hour: `${i.toString().padStart(2, '0')}:00`,
@@ -163,10 +173,8 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
     }));
 
     const paymentDistributionData = Object.entries(paymentDistribution).map(([name, value]) => ({ name, value }));
-    const pcPopularityData = Object.entries(pcPopularity).map(([name, sessions]) => ({ name, sessions })).sort((a,b) => b.sessions - a.sessions);
-    const durationPopularityData = Object.entries(durationPopularity).map(([name, sessions]) => ({ name, sessions })).sort((a,b) => b.sessions - a.sessions);
 
-    return { peakHoursData, paymentDistributionData, dayType, pcPopularityData, durationPopularityData };
+    return { peakHoursData, paymentDistributionData, dayType, pcUsageByDurationData: Object.values(pcUsageByDuration) };
   }, [filteredSessions, pricingTiers]);
 
 
@@ -380,45 +388,32 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
             </Card>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2">
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center"><Computer className="mr-2 h-5 w-5" />PC Popularity</CardTitle>
-                    <CardDescription>Usage count for each PC in the selected period.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                     <ChartContainer config={{ sessions: { label: 'Sessions', color: 'hsl(var(--chart-1))'}}} className="h-[250px] w-full">
-                        <RechartsBarChart data={detailedAnalytics.pcPopularityData} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
-                             <CartesianGrid vertical={false} />
-                             <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={10} interval={0} />
-                             <YAxis stroke="hsl(var(--muted-foreground))" fontSize={10} />
-                             <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="dot" />} />
-                             <Bar dataKey="sessions" fill="var(--color-sessions)" radius={4} />
-                        </RechartsBarChart>
-                     </ChartContainer>
-                </CardContent>
-            </Card>
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center"><Tag className="mr-2 h-5 w-5" />Duration Popularity</CardTitle>
-                    <CardDescription>Most frequently chosen rental durations.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <ChartContainer config={{ sessions: { label: 'Sessions', color: 'hsl(var(--chart-2))'}}} className="h-[250px] w-full">
-                        <RechartsBarChart data={detailedAnalytics.durationPopularityData} layout="vertical" margin={{ top: 5, right: 5, left: -10, bottom: 5 }}>
-                            <CartesianGrid horizontal={false} />
-                            <YAxis dataKey="name" type="category" stroke="hsl(var(--muted-foreground))" fontSize={12} width={80} interval={0} />
-                            <XAxis dataKey="sessions" type="number" stroke="hsl(var(--muted-foreground))" fontSize={10} />
-                            <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="dot" />} />
-                            <Bar dataKey="sessions" fill="var(--color-sessions)" radius={4} />
-                        </RechartsBarChart>
-                    </ChartContainer>
-                </CardContent>
-            </Card>
-        </div>
+        <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center"><Computer className="mr-2 h-5 w-5" />Session Duration per PC</CardTitle>
+                <CardDescription>Breakdown of popular session times on each computer.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                 <ChartContainer config={{}} className="h-[300px] w-full">
+                    <RechartsBarChart data={detailedAnalytics.pcUsageByDurationData} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
+                         <CartesianGrid vertical={false} />
+                         <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={10} interval={0} />
+                         <YAxis stroke="hsl(var(--muted-foreground))" fontSize={10} />
+                         <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="dot" />} />
+                         <Legend />
+                         {pricingTiers.map((tier, i) => (
+                            <Bar 
+                                key={tier.value}
+                                dataKey={tier.label}
+                                fill={DURATION_COLORS[i % DURATION_COLORS.length]}
+                                radius={4} 
+                                stackId="a"
+                            />
+                         ))}
+                    </RechartsBarChart>
+                 </ChartContainer>
+            </CardContent>
+        </Card>
     </div>
   );
 }
-
-    
-    
