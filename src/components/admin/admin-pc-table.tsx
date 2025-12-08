@@ -286,7 +286,7 @@ export function AdminPcTable({ pcs, setPcs, addAuditLog, onRefresh, isRefreshing
             customerEmail: invoicePc.email,
             emailSubject: invoiceContent.emailSubject,
             emailBody: invoiceContent.emailBody,
-            fromAddress: 'ComRent <noreply@your-verified-domain.com>'
+            fromAddress: 'ComRent <onboarding@resend.dev>'
         });
 
         if (result && result.success) {
