@@ -1,7 +1,7 @@
 'use client';
 import { useMemo, useState } from 'react';
 import type { PC, PricingTier, PaymentMethod } from '@/lib/types';
-import { Users, DollarSign, Clock, Computer, Calendar as CalendarIcon, TrendingUp } from 'lucide-react';
+import { Users, DollarSign, Clock, Computer, Calendar as CalendarIcon } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import {
   ChartContainer,
@@ -159,12 +159,12 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
   }, [allSessions, pricingTiers, date, compareDate]);
 
   const monthlyComparisonData = useMemo(() => {
-    const thisYear = new Date().getFullYear();
+    const thisYear = getYear(new Date());
     const lastYear = thisYear - 1;
 
     const thisYearMonths = eachMonthOfInterval({
-        start: startOfYear(new Date(thisYear, 0, 1)),
-        end: endOfYear(new Date(thisYear, 11, 31)),
+        start: new Date(thisYear, 0, 1),
+        end: new Date(thisYear, 11, 31),
     });
 
     const data = thisYearMonths.map(monthDate => {
@@ -240,6 +240,53 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
                 <DateRangePicker label="Comparison Period" currentRange={compareDate} onSelect={setCompareDate} />
             </div>
         </div>
+        
+        <div className="grid gap-4 md:grid-cols-2">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Date Range Comparison</CardTitle>
+                    <CardDescription>Comparing key metrics between the two selected periods.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <ChartContainer config={{
+                        primary: { label: format(date?.from ?? new Date(), 'MMM d'), color: 'hsl(var(--chart-1))' },
+                        secondary: { label: format(compareDate?.from ?? new Date(), 'MMM d'), color: 'hsl(var(--chart-2))' },
+                    }}>
+                        <RechartsBarChart data={comparisonStats.rangeComparisonData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
+                            <CartesianGrid vertical={false} />
+                            <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                            <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickFormatter={(val) => typeof val === 'number' && val > 1000 ? `₱${(val/1000).toFixed(0)}k`: val}/>
+                            <ChartTooltip content={<ChartTooltipContent />} />
+                            <Legend />
+                            <Bar dataKey="primary" fill="hsl(var(--chart-1))" radius={[4, 4, 0, 0]} name={date?.from ? `${format(date.from, 'LLL dd')} - ${format(date.to ?? date.from, 'LLL dd')}` : 'Primary'}/>
+                            <Bar dataKey="secondary" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} name={compareDate?.from ? `${format(compareDate.from, 'LLL dd')} - ${format(compareDate.to ?? compareDate.from, 'LLL dd')}` : 'Secondary'}/>
+                        </RechartsBarChart>
+                    </ChartContainer>
+                </CardContent>
+            </Card>
+            <Card>
+                <CardHeader>
+                    <CardTitle>Monthly Revenue Comparison</CardTitle>
+                    <CardDescription>Comparing this year's revenue with last year's.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <ChartContainer config={{
+                        [new Date().getFullYear()]: { label: String(new Date().getFullYear()), color: 'hsl(var(--chart-1))' },
+                        [new Date().getFullYear() - 1]: { label: String(new Date().getFullYear() - 1), color: 'hsl(var(--chart-2))' },
+                    }}>
+                        <RechartsBarChart data={monthlyComparisonData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
+                            <CartesianGrid vertical={false} />
+                            <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                            <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickFormatter={(val) => `₱${(val/1000).toFixed(0)}k`} />
+                            <ChartTooltip content={<ChartTooltipContent />} />
+                            <Legend />
+                            <Bar dataKey={String(new Date().getFullYear())} fill="hsl(var(--chart-1))" radius={[4, 4, 0, 0]} name={String(new Date().getFullYear())}/>
+                            <Bar dataKey={String(new Date().getFullYear() - 1)} fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} name={String(new Date().getFullYear() - 1)}/>
+                        </RechartsBarChart>
+                    </ChartContainer>
+                </CardContent>
+            </Card>
+        </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
@@ -284,52 +331,7 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
         </Card>
       </div>
 
-       <div className="grid gap-4 md:grid-cols-2">
-            <Card>
-                <CardHeader>
-                    <CardTitle>Date Range Comparison</CardTitle>
-                    <CardDescription>Comparing key metrics between the two selected periods.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <ChartContainer config={{
-                        primary: { label: format(date?.from ?? new Date(), 'MMM d'), color: 'hsl(var(--chart-1))' },
-                        secondary: { label: format(compareDate?.from ?? new Date(), 'MMM d'), color: 'hsl(var(--chart-2))' },
-                    }}>
-                        <RechartsBarChart data={comparisonStats.rangeComparisonData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
-                            <CartesianGrid vertical={false} />
-                            <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                            <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickFormatter={(val) => typeof val === 'number' && val > 100 ? `₱${val}`: val}/>
-                            <ChartTooltip content={<ChartTooltipContent />} />
-                            <Legend />
-                            <Bar dataKey="primary" fill="hsl(var(--chart-1))" radius={[4, 4, 0, 0]} name={date?.from ? format(date.from, 'LLL dd') : 'Primary'}/>
-                            <Bar dataKey="secondary" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} name={compareDate?.from ? format(compareDate.from, 'LLL dd') : 'Secondary'}/>
-                        </RechartsBarChart>
-                    </ChartContainer>
-                </CardContent>
-            </Card>
-            <Card>
-                <CardHeader>
-                    <CardTitle>Monthly Revenue Comparison</CardTitle>
-                    <CardDescription>Comparing this year's revenue with last year's.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <ChartContainer config={{
-                        [new Date().getFullYear()]: { label: String(new Date().getFullYear()), color: 'hsl(var(--chart-1))' },
-                        [new Date().getFullYear() - 1]: { label: String(new Date().getFullYear() - 1), color: 'hsl(var(--chart-2))' },
-                    }}>
-                        <RechartsBarChart data={monthlyComparisonData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
-                            <CartesianGrid vertical={false} />
-                            <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                            <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickFormatter={(val) => `₱${val}`} />
-                            <ChartTooltip content={<ChartTooltipContent />} />
-                            <Legend />
-                            <Bar dataKey={String(new Date().getFullYear())} fill="hsl(var(--chart-1))" radius={[4, 4, 0, 0]} name={String(new Date().getFullYear())}/>
-                            <Bar dataKey={String(new Date().getFullYear() - 1)} fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} name={String(new Date().getFullYear() - 1)}/>
-                        </RechartsBarChart>
-                    </ChartContainer>
-                </CardContent>
-            </Card>
-        </div>
+       
 
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
