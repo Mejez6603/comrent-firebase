@@ -1,7 +1,7 @@
 'use client';
 import { useMemo, useState } from 'react';
 import type { PC, PricingTier, PaymentMethod } from '@/lib/types';
-import { Users, DollarSign, Clock, Computer, Calendar as CalendarIcon, ArrowUp, ArrowDown } from 'lucide-react';
+import { Users, DollarSign, Clock, Computer, Calendar as CalendarIcon } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import {
   ChartContainer,
@@ -26,7 +26,7 @@ import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { addDays, format, subMonths, startOfDay, getDay, subYears, startOfMonth, endOfMonth, eachMonthOfInterval, getYear } from 'date-fns';
+import { addDays, format, subMonths, startOfDay, getDay, startOfMonth, endOfMonth, eachMonthOfInterval, getYear } from 'date-fns';
 import { DateRange } from 'react-day-picker';
 
 type AnalyticsDashboardProps = {
@@ -40,13 +40,8 @@ const PIE_CHART_COLORS = ["hsl(var(--chart-1))", "hsl(var(--chart-2))", "hsl(var
 
 export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: AnalyticsDashboardProps) {
   const [date, setDate] = useState<DateRange | undefined>({
-    from: startOfMonth(subMonths(new Date(), 1)),
-    to: endOfMonth(subMonths(new Date(), 1)),
-  });
-
-  const [compareDate, setCompareDate] = useState<DateRange | undefined>({
-    from: startOfMonth(subMonths(new Date(), 2)),
-    to: endOfMonth(subMonths(new Date(), 2)),
+    from: startOfMonth(subMonths(new Date(), 4)),
+    to: endOfMonth(new Date()),
   });
 
   const allSessions = useMemo(() => {
@@ -54,11 +49,11 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
   }, [historicalSessions, pcs]);
 
 
-  const getStatsForRange = (range: DateRange | undefined) => {
-    if (!range?.from) return { totalRevenue: 0, totalSessions: 0, paymentMethodCounts: {}, dailyRevenueChartData: [], hourlyActivityChartData: [], paymentMethodChartData: [], weeklyComparisonChartData: [], averageSessionMinutes: 0 };
+  const mainStats = useMemo(() => {
+    if (!date?.from) return { totalRevenue: 0, totalSessions: 0, paymentMethodCounts: {}, dailyRevenueChartData: [], hourlyActivityChartData: [], paymentMethodChartData: [], weeklyComparisonChartData: [], averageSessionMinutes: 0, monthlyPerformanceData: [] };
     
-    const fromDate = startOfDay(range.from);
-    const toDate = range.to ? startOfDay(addDays(range.to, 1)) : startOfDay(addDays(new Date(), 1));
+    const fromDate = startOfDay(date.from);
+    const toDate = date.to ? startOfDay(addDays(date.to, 1)) : startOfDay(addDays(new Date(), 1));
 
     const filteredSessions = allSessions.filter(pc => {
         if (!pc.session_start) return false;
@@ -129,239 +124,140 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
         { name: 'Weekend', sessions: weeklyComparison.Weekend.sessions, revenue: weeklyComparison.Weekend.revenue },
     ];
     
-    return { totalRevenue, totalSessions, paymentMethodCounts, dailyRevenueChartData, hourlyActivityChartData, paymentMethodChartData, weeklyComparisonChartData, averageSessionMinutes };
-  }
-
-  const comparisonStats = useMemo(() => {
-    const primary = getStatsForRange(date);
-    const secondary = getStatsForRange(compareDate);
-    const rangeComparisonData = [
-        {
-            name: 'Revenue',
-            primary: primary.totalRevenue,
-            secondary: secondary.totalRevenue,
-        },
-        {
-            name: 'Sessions',
-            primary: primary.totalSessions,
-            secondary: secondary.totalSessions,
+    const monthlyPerformance = filteredSessions.reduce((acc, session) => {
+        if (!session.session_start) return acc;
+        const month = format(new Date(session.session_start), 'MMM yyyy');
+        const durationInfo = pricingTiers.find(d => d.value === String(session.session_duration));
+        const price = durationInfo?.price || 0;
+        if (!acc[month]) {
+            acc[month] = { month, revenue: 0, sessions: 0 };
         }
-    ];
+        acc[month].revenue += price;
+        acc[month].sessions += 1;
+        return acc;
+    }, {} as Record<string, { month: string, revenue: number, sessions: number }>);
+    const monthlyPerformanceData = Object.values(monthlyPerformance).sort((a,b) => new Date(a.month).getTime() - new Date(b.month).getTime());
 
-    const getPercentageChange = (current: number, previous: number) => {
-        if (previous === 0) return current > 0 ? 100 : 0;
-        return ((current - previous) / previous) * 100;
-    };
-
-    return { 
-        primary, 
-        secondary, 
-        rangeComparisonData,
-        revenueChange: getPercentageChange(primary.totalRevenue, secondary.totalRevenue),
-        sessionsChange: getPercentageChange(primary.totalSessions, secondary.totalSessions),
-        avgSessionChange: getPercentageChange(primary.averageSessionMinutes, secondary.averageSessionMinutes),
-    };
-  }, [allSessions, pricingTiers, date, compareDate]);
+    return { totalRevenue, totalSessions, paymentMethodCounts, dailyRevenueChartData, hourlyActivityChartData, paymentMethodChartData, weeklyComparisonChartData, averageSessionMinutes, monthlyPerformanceData };
+  }, [allSessions, pricingTiers, date]);
 
   const activePcsCount = pcs.filter(pc => pc.status === 'in_use').length;
-
-  const monthlyComparisonData = useMemo(() => {
-    const thisYear = getYear(new Date());
-    const lastYear = thisYear - 1;
-
-    const thisYearMonths = eachMonthOfInterval({
-        start: new Date(thisYear, 0, 1),
-        end: new Date(thisYear, 11, 31),
-    });
-
-    const data = thisYearMonths.map(monthDate => {
-        const monthName = format(monthDate, 'MMM');
-        const thisYearRange = { from: startOfMonth(monthDate), to: endOfMonth(monthDate) };
-        const lastYearRange = { from: startOfMonth(subYears(monthDate, 1)), to: endOfMonth(subYears(monthDate, 1)) };
-        
-        return {
-            month: monthName,
-            [thisYear]: getStatsForRange(thisYearRange).totalRevenue,
-            [lastYear]: getStatsForRange(lastYearRange).totalRevenue,
-        }
-    });
-
-    return data;
-  }, [allSessions, pricingTiers]);
-
-
-  const DateRangePicker = ({
-    currentRange,
-    onSelect,
-    label
-  }: {
-    currentRange: DateRange | undefined,
-    onSelect: (range: DateRange | undefined) => void,
-    label: string,
-  }) => (
-    <div className='flex flex-col gap-1'>
-        <span className='text-sm font-medium text-muted-foreground'>{label}</span>
-        <Popover>
-            <PopoverTrigger asChild>
-            <Button
-                id="date"
-                variant={"outline"}
-                className={cn(
-                "w-[260px] justify-start text-left font-normal",
-                !currentRange && "text-muted-foreground"
-                )}
-            >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {currentRange?.from ? (
-                    currentRange.to ? (
-                    <>
-                    {format(currentRange.from, "LLL dd, y")} - {format(currentRange.to, "LLL dd, y")}
-                    </>
-                ) : (
-                    format(currentRange.from, "LLL dd, y")
-                )
-                ) : (
-                <span>Pick a date</span>
-                )}
-            </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-            <Calendar
-                initialFocus
-                mode="range"
-                defaultMonth={currentRange?.from}
-                selected={currentRange}
-                onSelect={onSelect}
-                numberOfMonths={2}
-            />
-            </PopoverContent>
-        </Popover>
-    </div>
-  );
-  
-  const StatChange = ({ value }: { value: number }) => {
-    const isPositive = value >= 0;
-    if (value === 0 || !isFinite(value)) return null;
-
-    return (
-        <p className={cn(
-            "text-xs text-muted-foreground flex items-center",
-            isPositive ? "text-green-600" : "text-red-600"
-        )}>
-            {isPositive ? <ArrowUp className="h-3 w-3 mr-1" /> : <ArrowDown className="h-3 w-3 mr-1" />}
-            {value.toFixed(1)}% from comparison period
-        </p>
-    );
-  };
-
 
   return (
     <div className="space-y-4">
         <div className="flex flex-wrap gap-4 justify-between items-end">
             <div className='flex flex-wrap gap-4'>
-                <DateRangePicker label="Primary Period" currentRange={date} onSelect={setDate} />
-                <DateRangePicker label="Comparison Period" currentRange={compareDate} onSelect={setCompareDate} />
+                <Popover>
+                    <PopoverTrigger asChild>
+                    <Button
+                        id="date"
+                        variant={"outline"}
+                        className={cn(
+                        "w-[260px] justify-start text-left font-normal",
+                        !date && "text-muted-foreground"
+                        )}
+                    >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {date?.from ? (
+                            date.to ? (
+                            <>
+                            {format(date.from, "LLL dd, y")} - {format(date.to, "LLL dd, y")}
+                            </>
+                        ) : (
+                            format(date.from, "LLL dd, y")
+                        )
+                        ) : (
+                        <span>Pick a date</span>
+                        )}
+                    </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                        initialFocus
+                        mode="range"
+                        defaultMonth={date?.from}
+                        selected={date}
+                        onSelect={setDate}
+                        numberOfMonths={2}
+                    />
+                    </PopoverContent>
+                </Popover>
             </div>
         </div>
-        
-        <div className="grid gap-4 md:grid-cols-2">
+
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Card>
-                <CardHeader>
-                    <CardTitle>Date Range Comparison</CardTitle>
-                    <CardDescription>Comparing key metrics between the two selected periods.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <ChartContainer config={{
-                        primary: { label: format(date?.from ?? new Date(), 'MMM d'), color: 'hsl(var(--chart-1))' },
-                        secondary: { label: format(compareDate?.from ?? new Date(), 'MMM d'), color: 'hsl(var(--chart-2))' },
-                    }}>
-                        <RechartsBarChart data={comparisonStats.rangeComparisonData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
-                            <CartesianGrid vertical={false} />
-                            <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                            <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickFormatter={(val) => typeof val === 'number' && val > 1000 ? `₱${(val/1000).toFixed(0)}k`: val}/>
-                            <ChartTooltip content={<ChartTooltipContent />} />
-                            <Legend />
-                            <Bar dataKey="primary" fill="hsl(var(--chart-1))" radius={[4, 4, 0, 0]} name={date?.from ? `${format(date.from, 'LLL dd')} - ${date.to ? format(date.to, 'LLL dd') : ''}` : 'Primary'}/>
-                            <Bar dataKey="secondary" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} name={compareDate?.from ? `${format(compareDate.from, 'LLL dd')} - ${compareDate.to ? format(compareDate.to, 'LLL dd') : ''}` : 'Secondary'}/>
-                        </RechartsBarChart>
-                    </ChartContainer>
-                </CardContent>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+                <DollarSign className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+                <div className="text-2xl font-bold">₱{mainStats.totalRevenue.toFixed(2)}</div>
+                <p className="text-xs text-muted-foreground">from selected period</p>
+            </CardContent>
             </Card>
             <Card>
-                <CardHeader>
-                    <CardTitle>Monthly Revenue Comparison</CardTitle>
-                    <CardDescription>Comparing this year's revenue with last year's.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <ChartContainer config={{
-                        [new Date().getFullYear()]: { label: String(new Date().getFullYear()), color: 'hsl(var(--chart-1))' },
-                        [new Date().getFullYear() - 1]: { label: String(new Date().getFullYear() - 1), color: 'hsl(var(--chart-2))' },
-                    }}>
-                        <RechartsBarChart data={monthlyComparisonData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
-                            <CartesianGrid vertical={false} />
-                            <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                            <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickFormatter={(val) => `₱${(val/1000).toFixed(0)}k`} />
-                            <ChartTooltip content={<ChartTooltipContent />} />
-                            <Legend />
-                            <Bar dataKey={String(new Date().getFullYear())} fill="hsl(var(--chart-1))" radius={[4, 4, 0, 0]} name={String(new Date().getFullYear())}/>
-                            <Bar dataKey={String(new Date().getFullYear() - 1)} fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} name={String(new Date().getFullYear() - 1)}/>
-                        </RechartsBarChart>
-                    </ChartContainer>
-                </CardContent>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Active PCs</CardTitle>
+                <Computer className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+                <div className="text-2xl font-bold">{activePcsCount}</div>
+                <p className="text-xs text-muted-foreground">out of {pcs.length} total PCs</p>
+            </CardContent>
+            </Card>
+            <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Sessions</CardTitle>
+                <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+                <div className="text-2xl font-bold">+{mainStats.totalSessions}</div>
+                <p className="text-xs text-muted-foreground">from selected period</p>
+            </CardContent>
+            </Card>
+            <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Avg. Session Duration</CardTitle>
+                <Clock className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+                <div className="text-2xl font-bold">{mainStats.averageSessionMinutes.toFixed(0)} min</div>
+                <p className="text-xs text-muted-foreground">from selected period</p>
+            </CardContent>
             </Card>
         </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">₱{comparisonStats.primary.totalRevenue.toFixed(2)}</div>
-            <StatChange value={comparisonStats.revenueChange} />
-          </CardContent>
+            <CardHeader>
+                <CardTitle>Monthly Performance</CardTitle>
+                <CardDescription>Revenue and sessions for each month in the selected period.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <ChartContainer config={{
+                    revenue: { label: "Revenue", color: "hsl(var(--chart-1))" },
+                    sessions: { label: "Sessions", color: "hsl(var(--chart-2))" },
+                }}>
+                    <RechartsBarChart data={mainStats.monthlyPerformanceData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
+                        <CartesianGrid vertical={false} />
+                        <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                        <YAxis yAxisId="left" stroke="hsl(var(--chart-1))" fontSize={12} tickFormatter={(val) => `₱${(val/1000).toFixed(0)}k`} />
+                        <YAxis yAxisId="right" orientation="right" stroke="hsl(var(--chart-2))" fontSize={12} />
+                        <ChartTooltip content={<ChartTooltipContent />} />
+                        <Legend />
+                        <Bar yAxisId="left" dataKey="revenue" fill="hsl(var(--chart-1))" radius={[4, 4, 0, 0]} name="Revenue (₱)"/>
+                        <Bar yAxisId="right" dataKey="sessions" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} name="Sessions"/>
+                    </RechartsBarChart>
+                </ChartContainer>
+            </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active PCs</CardTitle>
-            <Computer className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{activePcsCount}</div>
-            <p className="text-xs text-muted-foreground">out of {pcs.length} total PCs</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Sessions</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">+{comparisonStats.primary.totalSessions}</div>
-            <StatChange value={comparisonStats.sessionsChange} />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg. Session Duration</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{comparisonStats.primary.averageSessionMinutes.toFixed(0)} min</div>
-            <StatChange value={comparisonStats.avgSessionChange} />
-          </CardContent>
-        </Card>
-      </div>
-
-       
 
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
         <Card className="col-span-full lg:col-span-4">
           <CardHeader>
             <CardTitle>Daily Revenue</CardTitle>
-            <CardDescription>Revenue from the primary period.</CardDescription>
+            <CardDescription>Revenue from the selected period.</CardDescription>
           </CardHeader>
           <CardContent className="pl-2">
           <ChartContainer config={{
@@ -371,7 +267,7 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
                 },
             }}>
               <RechartsLineChart
-                data={comparisonStats.primary.dailyRevenueChartData}
+                data={mainStats.dailyRevenueChartData}
                 margin={{ top: 5, right: 20, left: 10, bottom: 5 }}
               >
                 <CartesianGrid vertical={false} />
@@ -409,7 +305,7 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
         <Card className="col-span-full lg:col-span-3">
           <CardHeader>
             <CardTitle>Peak Hours</CardTitle>
-            <CardDescription>Most popular times for sessions in the primary period.</CardDescription>
+            <CardDescription>Most popular times for sessions in the selected period.</CardDescription>
           </CardHeader>
           <CardContent>
           <ChartContainer config={{
@@ -418,7 +314,7 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
                     color: "hsl(var(--chart-2))",
                 },
             }}>
-              <RechartsBarChart data={comparisonStats.primary.hourlyActivityChartData} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
+              <RechartsBarChart data={mainStats.hourlyActivityChartData} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
                 <CartesianGrid vertical={false} />
                 <XAxis dataKey="hour" stroke="hsl(var(--muted-foreground))" fontSize={10} />
                 <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
@@ -444,7 +340,7 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
                 <ResponsiveContainer width="100%" height={250}>
                     <PieChart>
                         <Pie
-                            data={comparisonStats.primary.paymentMethodChartData}
+                            data={mainStats.paymentMethodChartData}
                             dataKey="value"
                             nameKey="name"
                             cx="50%"
@@ -452,7 +348,7 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
                             outerRadius={80}
                             label={(entry) => `${entry.name} (${entry.value})`}
                         >
-                            {comparisonStats.primary.paymentMethodChartData.map((entry, index) => (
+                            {mainStats.paymentMethodChartData.map((entry, index) => (
                                 <Cell key={`cell-${index}`} fill={PIE_CHART_COLORS[index % PIE_CHART_COLORS.length]} />
                             ))}
                         </Pie>
@@ -478,7 +374,7 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
                 revenue: { label: "Revenue", color: "hsl(var(--chart-2))" },
             }}>
                 <ResponsiveContainer width="100%" height={250}>
-                    <RechartsBarChart data={comparisonStats.primary.weeklyComparisonChartData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
+                    <RechartsBarChart data={mainStats.weeklyComparisonChartData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
                         <CartesianGrid vertical={false} />
                         <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
                         <YAxis yAxisId="left" stroke="hsl(var(--chart-1))" fontSize={12} />
@@ -501,13 +397,13 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
             </CardHeader>
             <CardContent>
                 <div className="space-y-2">
-                    {Object.entries(comparisonStats.primary.paymentMethodCounts).map(([method, count]) => (
+                    {Object.entries(mainStats.paymentMethodCounts).map(([method, count]) => (
                         <div key={method} className="flex justify-between items-center">
                             <span className="text-sm text-muted-foreground">{method}</span>
                             <span className="font-bold">{count}</span>
                         </div>
                     ))}
-                    {Object.keys(comparisonStats.primary.paymentMethodCounts).length === 0 && <p className='text-sm text-muted-foreground'>No payment data for this period.</p>}
+                    {Object.keys(mainStats.paymentMethodCounts).length === 0 && <p className='text-sm text-muted-foreground'>No payment data for this period.</p>}
                 </div>
             </CardContent>
         </Card>
@@ -533,13 +429,4 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
     </div>
   );
 }
-
-// Helper functions to get start/end of year without importing all of date-fns
-function startOfYear(date: Date) {
-    return new Date(date.getFullYear(), 0, 1);
-}
-function endOfYear(date: Date) {
-    return new Date(date.getFullYear(), 11, 31);
-}
-
     
