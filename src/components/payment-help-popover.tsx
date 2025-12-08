@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -7,7 +8,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
-import { HelpCircle, Clock, Scan, Send, CheckCircle, ListOrdered } from 'lucide-react';
+import { HelpCircle, Clock, Scan, Upload, Send, CheckCircle, ListOrdered } from 'lucide-react';
 
 export function PaymentHelpPopover() {
   const [showHelpHint, setShowHelpHint] = useState(false);
@@ -65,29 +66,31 @@ export function PaymentHelpPopover() {
               <div className="flex items-start gap-3">
                 <Clock className="h-4 w-4 mt-1 text-accent flex-shrink-0" />
                 <div>
-                  <span className="font-semibold">Step 1:</span> Select your desired
-                  session duration.
+                  <span className="font-semibold">Step 1:</span> Select your time and add an optional email for the invoice.
                 </div>
               </div>
               <div className="flex items-start gap-3">
                 <Scan className="h-4 w-4 mt-1 text-accent flex-shrink-0" />
                 <div>
-                  <span className="font-semibold">Step 2:</span> Choose a
-                  payment method and scan the QR code that appears.
+                  <span className="font-semibold">Step 2:</span> Choose a payment method and scan the QR code with your app.
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <Upload className="h-4 w-4 mt-1 text-accent flex-shrink-0" />
+                <div>
+                  <span className="font-semibold">Step 3:</span> Upload a screenshot of your successful payment confirmation.
                 </div>
               </div>
               <div className="flex items-start gap-3">
                 <Send className="h-4 w-4 mt-1 text-accent flex-shrink-0" />
                 <div>
-                  <span className="font-semibold">Step 3:</span> After paying,
-                  click the &quot;I Have Sent The Payment&quot; button to notify the admin.
+                  <span className="font-semibold">Step 4:</span> Click the "I Have Sent The Payment" button to notify the admin.
                 </div>
               </div>
               <div className="flex items-start gap-3">
                 <CheckCircle className="h-4 w-4 mt-1 text-accent flex-shrink-0" />
                 <div>
-                  <span className="font-semibold">Step 4:</span> Wait for the admin
-                  to approve your session. The page will update automatically!
+                  <span className="font-semibold">Step 5:</span> Wait for the admin to approve. The page will update automatically!
                 </div>
               </div>
             </div>
