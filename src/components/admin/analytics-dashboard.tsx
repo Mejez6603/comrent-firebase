@@ -1,7 +1,7 @@
 'use client';
 import { useMemo, useState } from 'react';
 import type { PC, PricingTier, PaymentMethod } from '@/lib/types';
-import { Users, DollarSign, Clock, Computer, Calendar as CalendarIcon } from 'lucide-react';
+import { Users, DollarSign, Clock, Computer, Calendar as CalendarIcon, ArrowUp, ArrowDown } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import {
   ChartContainer,
@@ -132,13 +132,6 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
     return { totalRevenue, totalSessions, paymentMethodCounts, dailyRevenueChartData, hourlyActivityChartData, paymentMethodChartData, weeklyComparisonChartData, averageSessionMinutes };
   }
 
-  const stats = useMemo(() => {
-    const mainStats = getStatsForRange(date);
-    const activePcsCount = pcs.filter(pc => pc.status === 'in_use').length;
-
-    return { ...mainStats, activePcsCount };
-  }, [pcs, allSessions, pricingTiers, date]);
-
   const comparisonStats = useMemo(() => {
     const primary = getStatsForRange(date);
     const secondary = getStatsForRange(compareDate);
@@ -155,8 +148,22 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
         }
     ];
 
-    return { primary, secondary, rangeComparisonData };
+    const getPercentageChange = (current: number, previous: number) => {
+        if (previous === 0) return current > 0 ? 100 : 0;
+        return ((current - previous) / previous) * 100;
+    };
+
+    return { 
+        primary, 
+        secondary, 
+        rangeComparisonData,
+        revenueChange: getPercentageChange(primary.totalRevenue, secondary.totalRevenue),
+        sessionsChange: getPercentageChange(primary.totalSessions, secondary.totalSessions),
+        avgSessionChange: getPercentageChange(primary.averageSessionMinutes, secondary.averageSessionMinutes),
+    };
   }, [allSessions, pricingTiers, date, compareDate]);
+
+  const activePcsCount = pcs.filter(pc => pc.status === 'in_use').length;
 
   const monthlyComparisonData = useMemo(() => {
     const thisYear = getYear(new Date());
@@ -231,6 +238,22 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
         </Popover>
     </div>
   );
+  
+  const StatChange = ({ value }: { value: number }) => {
+    const isPositive = value >= 0;
+    if (value === 0 || !isFinite(value)) return null;
+
+    return (
+        <p className={cn(
+            "text-xs text-muted-foreground flex items-center",
+            isPositive ? "text-green-600" : "text-red-600"
+        )}>
+            {isPositive ? <ArrowUp className="h-3 w-3 mr-1" /> : <ArrowDown className="h-3 w-3 mr-1" />}
+            {value.toFixed(1)}% from comparison period
+        </p>
+    );
+  };
+
 
   return (
     <div className="space-y-4">
@@ -295,8 +318,8 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">₱{stats.totalRevenue.toFixed(2)}</div>
-            <p className="text-xs text-muted-foreground">from {stats.totalSessions} sessions</p>
+            <div className="text-2xl font-bold">₱{comparisonStats.primary.totalRevenue.toFixed(2)}</div>
+            <StatChange value={comparisonStats.revenueChange} />
           </CardContent>
         </Card>
         <Card>
@@ -305,7 +328,7 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
             <Computer className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.activePcsCount}</div>
+            <div className="text-2xl font-bold">{activePcsCount}</div>
             <p className="text-xs text-muted-foreground">out of {pcs.length} total PCs</p>
           </CardContent>
         </Card>
@@ -315,8 +338,8 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">+{stats.totalSessions}</div>
-            <p className="text-xs text-muted-foreground">within the primary period</p>
+            <div className="text-2xl font-bold">+{comparisonStats.primary.totalSessions}</div>
+            <StatChange value={comparisonStats.sessionsChange} />
           </CardContent>
         </Card>
         <Card>
@@ -325,8 +348,8 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.averageSessionMinutes.toFixed(0)} min</div>
-            <p className="text-xs text-muted-foreground">average time per session</p>
+            <div className="text-2xl font-bold">{comparisonStats.primary.averageSessionMinutes.toFixed(0)} min</div>
+            <StatChange value={comparisonStats.avgSessionChange} />
           </CardContent>
         </Card>
       </div>
@@ -348,7 +371,7 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
                 },
             }}>
               <RechartsLineChart
-                data={stats.dailyRevenueChartData}
+                data={comparisonStats.primary.dailyRevenueChartData}
                 margin={{ top: 5, right: 20, left: 10, bottom: 5 }}
               >
                 <CartesianGrid vertical={false} />
@@ -395,7 +418,7 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
                     color: "hsl(var(--chart-2))",
                 },
             }}>
-              <RechartsBarChart data={stats.hourlyActivityChartData} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
+              <RechartsBarChart data={comparisonStats.primary.hourlyActivityChartData} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
                 <CartesianGrid vertical={false} />
                 <XAxis dataKey="hour" stroke="hsl(var(--muted-foreground))" fontSize={10} />
                 <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
@@ -421,7 +444,7 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
                 <ResponsiveContainer width="100%" height={250}>
                     <PieChart>
                         <Pie
-                            data={stats.paymentMethodChartData}
+                            data={comparisonStats.primary.paymentMethodChartData}
                             dataKey="value"
                             nameKey="name"
                             cx="50%"
@@ -429,7 +452,7 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
                             outerRadius={80}
                             label={(entry) => `${entry.name} (${entry.value})`}
                         >
-                            {stats.paymentMethodChartData.map((entry, index) => (
+                            {comparisonStats.primary.paymentMethodChartData.map((entry, index) => (
                                 <Cell key={`cell-${index}`} fill={PIE_CHART_COLORS[index % PIE_CHART_COLORS.length]} />
                             ))}
                         </Pie>
@@ -455,7 +478,7 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
                 revenue: { label: "Revenue", color: "hsl(var(--chart-2))" },
             }}>
                 <ResponsiveContainer width="100%" height={250}>
-                    <RechartsBarChart data={stats.weeklyComparisonChartData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
+                    <RechartsBarChart data={comparisonStats.primary.weeklyComparisonChartData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
                         <CartesianGrid vertical={false} />
                         <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
                         <YAxis yAxisId="left" stroke="hsl(var(--chart-1))" fontSize={12} />
@@ -478,13 +501,13 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
             </CardHeader>
             <CardContent>
                 <div className="space-y-2">
-                    {Object.entries(stats.paymentMethodCounts).map(([method, count]) => (
+                    {Object.entries(comparisonStats.primary.paymentMethodCounts).map(([method, count]) => (
                         <div key={method} className="flex justify-between items-center">
                             <span className="text-sm text-muted-foreground">{method}</span>
                             <span className="font-bold">{count}</span>
                         </div>
                     ))}
-                    {Object.keys(stats.paymentMethodCounts).length === 0 && <p className='text-sm text-muted-foreground'>No payment data for this period.</p>}
+                    {Object.keys(comparisonStats.primary.paymentMethodCounts).length === 0 && <p className='text-sm text-muted-foreground'>No payment data for this period.</p>}
                 </div>
             </CardContent>
         </Card>
@@ -518,3 +541,5 @@ function startOfYear(date: Date) {
 function endOfYear(date: Date) {
     return new Date(date.getFullYear(), 11, 31);
 }
+
+    
