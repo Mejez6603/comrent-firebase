@@ -1,7 +1,7 @@
 'use client';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import type { PC, PricingTier, PaymentMethod } from '@/lib/types';
-import { Users, DollarSign, Clock, Computer, Calendar as CalendarIcon } from 'lucide-react';
+import { Users, DollarSign, Clock, Computer, Calendar as CalendarIcon, ArrowDown, ArrowUp } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import {
   ChartContainer,
@@ -10,12 +10,7 @@ import {
 } from '@/components/ui/chart';
 import {
   Bar,
-  Line,
-  Pie,
-  PieChart,
-  Cell,
   BarChart as RechartsBarChart,
-  LineChart as RechartsLineChart,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -26,7 +21,7 @@ import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { addDays, format, subMonths, startOfDay, getDay, startOfMonth, endOfMonth, eachMonthOfInterval, getYear } from 'date-fns';
+import { addDays, format, subMonths, startOfDay, endOfMonth } from 'date-fns';
 import { DateRange } from 'react-day-picker';
 
 type AnalyticsDashboardProps = {
@@ -40,7 +35,7 @@ const PIE_CHART_COLORS = ["hsl(var(--chart-1))", "hsl(var(--chart-2))", "hsl(var
 
 export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: AnalyticsDashboardProps) {
   const [date, setDate] = useState<DateRange | undefined>({
-    from: startOfMonth(subMonths(new Date(), 4)),
+    from: startOfDay(subMonths(new Date(), 5)),
     to: endOfMonth(new Date()),
   });
 
@@ -50,7 +45,7 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
 
 
   const mainStats = useMemo(() => {
-    if (!date?.from) return { totalRevenue: 0, totalSessions: 0, paymentMethodCounts: {}, dailyRevenueChartData: [], hourlyActivityChartData: [], paymentMethodChartData: [], weeklyComparisonChartData: [], averageSessionMinutes: 0, monthlyPerformanceData: [] };
+    if (!date?.from) return { totalRevenue: 0, totalSessions: 0, averageSessionMinutes: 0, monthlyPerformanceData: [] };
     
     const fromDate = startOfDay(date.from);
     const toDate = date.to ? startOfDay(addDays(date.to, 1)) : startOfDay(addDays(new Date(), 1));
@@ -69,61 +64,6 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
     const totalSessions = filteredSessions.length;
     const averageSessionMinutes = totalSessions > 0 ? filteredSessions.reduce((acc, pc) => acc + (pc.session_duration || 0), 0) / totalSessions : 0;
     
-    const paymentMethodCounts = filteredSessions.reduce((acc, pc) => {
-        if (pc.paymentMethod) {
-            acc[pc.paymentMethod] = (acc[pc.paymentMethod] || 0) + 1;
-        }
-        return acc;
-    }, {} as Record<PaymentMethod, number>);
-    const paymentMethodChartData = Object.entries(paymentMethodCounts).map(([name, value]) => ({ name, value }));
-
-
-    const dailyRevenue = filteredSessions.reduce((acc, session) => {
-        if (!session.session_start) return acc;
-        const day = format(new Date(session.session_start), 'yyyy-MM-dd');
-        const durationInfo = pricingTiers.find(d => d.value === String(session.session_duration));
-        const price = durationInfo?.price || 0;
-        if (!acc[day]) {
-            acc[day] = { date: day, revenue: 0 };
-        }
-        acc[day].revenue += price;
-        return acc;
-    }, {} as Record<string, { date: string, revenue: number }>);
-    const dailyRevenueChartData = Object.values(dailyRevenue).sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-
-    const hourlyActivity = filteredSessions.reduce((acc, session) => {
-        if (!session.session_start) return acc;
-        const hour = new Date(session.session_start).getHours();
-        acc[hour] = (acc[hour] || 0) + 1;
-        return acc;
-      }, {} as Record<number, number>);
-      
-      const hourlyActivityChartData = Array.from({ length: 24 }, (_, i) => ({
-        hour: `${i}:00`,
-        sessions: hourlyActivity[i] || 0,
-      }));
-
-    const weeklyComparison = filteredSessions.reduce((acc, session) => {
-        if (!session.session_start) return acc;
-        const dayOfWeek = getDay(new Date(session.session_start));
-        const type = (dayOfWeek === 0 || dayOfWeek === 6) ? 'Weekend' : 'Weekday';
-        const durationInfo = pricingTiers.find(d => d.value === String(session.session_duration));
-        const price = durationInfo?.price || 0;
-
-        acc[type].sessions += 1;
-        acc[type].revenue += price;
-        return acc;
-    }, { 
-        Weekday: { sessions: 0, revenue: 0 },
-        Weekend: { sessions: 0, revenue: 0 }
-    });
-
-    const weeklyComparisonChartData = [
-        { name: 'Weekday', sessions: weeklyComparison.Weekday.sessions, revenue: weeklyComparison.Weekday.revenue },
-        { name: 'Weekend', sessions: weeklyComparison.Weekend.sessions, revenue: weeklyComparison.Weekend.revenue },
-    ];
-    
     const monthlyPerformance = filteredSessions.reduce((acc, session) => {
         if (!session.session_start) return acc;
         const month = format(new Date(session.session_start), 'MMM yyyy');
@@ -138,7 +78,7 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
     }, {} as Record<string, { month: string, revenue: number, sessions: number }>);
     const monthlyPerformanceData = Object.values(monthlyPerformance).sort((a,b) => new Date(a.month).getTime() - new Date(b.month).getTime());
 
-    return { totalRevenue, totalSessions, paymentMethodCounts, dailyRevenueChartData, hourlyActivityChartData, paymentMethodChartData, weeklyComparisonChartData, averageSessionMinutes, monthlyPerformanceData };
+    return { totalRevenue, totalSessions, averageSessionMinutes, monthlyPerformanceData };
   }, [allSessions, pricingTiers, date]);
 
   const activePcsCount = pcs.filter(pc => pc.status === 'in_use').length;
@@ -234,10 +174,7 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
                 <CardDescription>Revenue and sessions for each month in the selected period.</CardDescription>
             </CardHeader>
             <CardContent>
-                <ChartContainer config={{
-                    revenue: { label: "Revenue", color: "hsl(var(--chart-1))" },
-                    sessions: { label: "Sessions", color: "hsl(var(--chart-2))" },
-                }}>
+                <ResponsiveContainer width="100%" height={350}>
                     <RechartsBarChart data={mainStats.monthlyPerformanceData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
                         <CartesianGrid vertical={false} />
                         <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={12} />
@@ -248,185 +185,10 @@ export function AnalyticsDashboard({ pcs, historicalSessions, pricingTiers }: An
                         <Bar yAxisId="left" dataKey="revenue" fill="hsl(var(--chart-1))" radius={[4, 4, 0, 0]} name="Revenue (₱)"/>
                         <Bar yAxisId="right" dataKey="sessions" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} name="Sessions"/>
                     </RechartsBarChart>
-                </ChartContainer>
-            </CardContent>
-        </Card>
-
-
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-        <Card className="col-span-full lg:col-span-4">
-          <CardHeader>
-            <CardTitle>Daily Revenue</CardTitle>
-            <CardDescription>Revenue from the selected period.</CardDescription>
-          </CardHeader>
-          <CardContent className="pl-2">
-          <ChartContainer config={{
-                revenue: {
-                    label: "Revenue",
-                    color: "hsl(var(--chart-1))",
-                },
-            }}>
-              <RechartsLineChart
-                data={mainStats.dailyRevenueChartData}
-                margin={{ top: 5, right: 20, left: 10, bottom: 5 }}
-              >
-                <CartesianGrid vertical={false} />
-                <XAxis
-                  dataKey="date"
-                  tickFormatter={(value) => format(new Date(value), 'MMM d')}
-                  stroke="hsl(var(--muted-foreground))"
-                  fontSize={12}
-                />
-                <YAxis 
-                    yAxisId="left" 
-                    stroke="hsl(var(--muted-foreground))" 
-                    fontSize={12}
-                    tickFormatter={(value) => `₱${value}`}
-                />
-                <ChartTooltip
-                    cursor={false}
-                    content={<ChartTooltipContent indicator="line" />}
-                />
-                <Legend />
-                <Line
-                  dataKey="revenue"
-                  type="monotone"
-                  stroke="hsl(var(--chart-1))"
-                  strokeWidth={2}
-                  dot={false}
-                  yAxisId="left"
-                  name="Daily Revenue"
-                />
-              </RechartsLineChart>
-            </ChartContainer>
-          </CardContent>
-        </Card>
-
-        <Card className="col-span-full lg:col-span-3">
-          <CardHeader>
-            <CardTitle>Peak Hours</CardTitle>
-            <CardDescription>Most popular times for sessions in the selected period.</CardDescription>
-          </CardHeader>
-          <CardContent>
-          <ChartContainer config={{
-                sessions: {
-                    label: "Sessions",
-                    color: "hsl(var(--chart-2))",
-                },
-            }}>
-              <RechartsBarChart data={mainStats.hourlyActivityChartData} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
-                <CartesianGrid vertical={false} />
-                <XAxis dataKey="hour" stroke="hsl(var(--muted-foreground))" fontSize={10} />
-                <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                <ChartTooltip
-                    cursor={false}
-                    content={<ChartTooltipContent indicator="dot" />}
-                />
-                <Bar dataKey="sessions" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} name="Sessions" />
-              </RechartsBarChart>
-            </ChartContainer>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-        <Card className="col-span-full lg:col-span-3">
-          <CardHeader>
-            <CardTitle>Payment Method Distribution</CardTitle>
-            <CardDescription>Breakdown of transactions by payment type.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ChartContainer config={{}}>
-                <ResponsiveContainer width="100%" height={250}>
-                    <PieChart>
-                        <Pie
-                            data={mainStats.paymentMethodChartData}
-                            dataKey="value"
-                            nameKey="name"
-                            cx="50%"
-                            cy="50%"
-                            outerRadius={80}
-                            label={(entry) => `${entry.name} (${entry.value})`}
-                        >
-                            {mainStats.paymentMethodChartData.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={PIE_CHART_COLORS[index % PIE_CHART_COLORS.length]} />
-                            ))}
-                        </Pie>
-                        <ChartTooltip
-                            cursor={false}
-                            content={<ChartTooltipContent hideLabel />}
-                        />
-                        <Legend />
-                    </PieChart>
                 </ResponsiveContainer>
-            </ChartContainer>
-          </CardContent>
-        </Card>
-
-        <Card className="col-span-full lg:col-span-4">
-          <CardHeader>
-            <CardTitle>Weekday vs. Weekend Activity</CardTitle>
-            <CardDescription>A comparison of user activity and revenue.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ChartContainer config={{
-                sessions: { label: "Sessions", color: "hsl(var(--chart-1))" },
-                revenue: { label: "Revenue", color: "hsl(var(--chart-2))" },
-            }}>
-                <ResponsiveContainer width="100%" height={250}>
-                    <RechartsBarChart data={mainStats.weeklyComparisonChartData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
-                        <CartesianGrid vertical={false} />
-                        <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                        <YAxis yAxisId="left" stroke="hsl(var(--chart-1))" fontSize={12} />
-                        <YAxis yAxisId="right" orientation="right" stroke="hsl(var(--chart-2))" fontSize={12} tickFormatter={(val) => `₱${val}`} />
-                        <ChartTooltip content={<ChartTooltipContent />} />
-                        <Legend />
-                        <Bar yAxisId="left" dataKey="sessions" fill="hsl(var(--chart-1))" radius={[4, 4, 0, 0]} name="Sessions" />
-                        <Bar yAxisId="right" dataKey="revenue" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} name="Revenue (₱)" />
-                    </RechartsBarChart>
-                </ResponsiveContainer>
-            </ChartContainer>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card>
-            <CardHeader>
-                <CardTitle>Payment Methods</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <div className="space-y-2">
-                    {Object.entries(mainStats.paymentMethodCounts).map(([method, count]) => (
-                        <div key={method} className="flex justify-between items-center">
-                            <span className="text-sm text-muted-foreground">{method}</span>
-                            <span className="font-bold">{count}</span>
-                        </div>
-                    ))}
-                    {Object.keys(mainStats.paymentMethodCounts).length === 0 && <p className='text-sm text-muted-foreground'>No payment data for this period.</p>}
-                </div>
             </CardContent>
         </Card>
-        <Card>
-            <CardHeader>
-                <CardTitle>Live PC Status Distribution</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <div className="space-y-2">
-                    {Object.entries(pcs.reduce((acc, pc) => {
-                        acc[pc.status] = (acc[pc.status] || 0) + 1;
-                        return acc;
-                    }, {} as Record<string, number>)).map(([status, count]) => (
-                        <div key={status} className="flex justify-between items-center">
-                            <span className="text-sm text-muted-foreground capitalize">{status.replace('_', ' ')}</span>
-                            <span className="font-bold">{count}</span>
-                        </div>
-                    ))}
-                </div>
-            </CardContent>
-        </Card>
-      </div>
+
     </div>
   );
 }
-    
