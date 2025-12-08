@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { Suspense, useState, useMemo, useEffect, useCallback, useRef } from 'react';
@@ -35,7 +34,6 @@ import { PaymentHelpPopover } from '@/components/payment-help-popover';
 import { useAlarm } from '@/hooks/use-alarm';
 import { SessionEndedDialog } from '@/components/session-ended-dialog';
 import { ChatProvider, useChat } from '@/hooks/use-chat';
-import { ChatButton } from '@/components/chat-button';
 import gcashQr from '@/qr code images/gcash.png';
 import mayaQr from '@/qr code images/maya.png';
 import paypalQr from '@/qr code images/paypal.png';
@@ -96,27 +94,13 @@ function PaymentForm() {
         const currentPc = allPcs.find(p => p.name === pcName);
         
         if (currentPc) {
-            if (currentPc.status === 'available') {
-                const reserveResponse = await fetch('/api/pc-status', {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id: currentPc.id, newStatus: 'pending_payment' }),
-                });
-                if (reserveResponse.ok) {
-                    const reservedPc = await reserveResponse.json();
-                    setPc(reservedPc);
-                } else {
-                    throw new Error('Failed to reserve PC');
-                }
-            } else {
-                 const validInitialStatuses = ['pending_payment', 'pending_approval', 'in_use', 'time_up'];
-                 if (validInitialStatuses.includes(currentPc.status)) {
-                    setPc(currentPc);
-                 } else {
-                    toast({ variant: "destructive", title: "PC Not Available", description: `${pcName} is currently not available for rent.` });
-                    router.push('/');
-                 }
-            }
+             const validInitialStatuses = ['available', 'pending_payment', 'pending_approval', 'in_use', 'time_up'];
+             if (validInitialStatuses.includes(currentPc.status)) {
+                setPc(currentPc);
+             } else {
+                toast({ variant: "destructive", title: "PC Not Available", description: `${pcName} is currently not available for rent.` });
+                router.push('/');
+             }
         } else {
             toast({ variant: "destructive", title: "Error", description: "PC not found." });
             router.push('/');
@@ -625,3 +609,5 @@ export default function PaymentPage() {
     </main>
   );
 }
+
+    
