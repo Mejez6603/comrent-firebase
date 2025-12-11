@@ -10,6 +10,8 @@ ComRent is a full-stack application designed to streamline the management of a c
 
 This project simulates a real-world scenario for a PC rental business, allowing users to select available computers, make payments, and manage their sessions. Admins have a powerful backend interface to oversee operations, track revenue, manage pricing, and assist users. The application is built with a modern tech stack, prioritizing a responsive user experience and robust administrative control.
 
+![](images/comrentdataflow.png)
+
 ## Project Journey: From Idea to Deployment
 
 This section details the collaborative process of building the ComRent application.
